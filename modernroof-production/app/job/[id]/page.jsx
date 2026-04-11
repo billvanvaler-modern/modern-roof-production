@@ -283,7 +283,13 @@ function PreProductionForm({ job, existing }) {
         <p style={{ color: C.muted, lineHeight: 1.7, margin: '0 0 20px', fontSize: 13 }}>
           Job <strong style={{ color: C.dark }}>{job.roofr_job_id}</strong> for <strong style={{ color: C.dark }}>{job.customer_name}</strong> has been saved.
         </p>
-        <button onClick={() => setSubmitted(false)} style={{ background: C.white, border: `1px solid ${C.border}`, color: C.dark, padding: '10px 24px', borderRadius: 4, cursor: 'pointer', fontSize: 13, fontFamily: font }}>← Edit Form</button>
+        <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
+          <a href={`/api/pdf/${job.roofr_job_id}`} target="_blank" rel="noopener noreferrer"
+            style={{ background: C.gold, color: C.black, padding: '11px 24px', borderRadius: 4, cursor: 'pointer', fontSize: 13, fontFamily: font, fontWeight: 700, textDecoration: 'none', display: 'inline-block' }}>
+            ⬇ Download Customer PDF
+          </a>
+          <button onClick={() => setSubmitted(false)} style={{ background: C.white, border: `1px solid ${C.border}`, color: C.dark, padding: '11px 24px', borderRadius: 4, cursor: 'pointer', fontSize: 13, fontFamily: font }}>← Edit Form</button>
+        </div>
       </div>
     </div>
   );
