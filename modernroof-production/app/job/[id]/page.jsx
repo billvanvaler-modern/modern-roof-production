@@ -161,9 +161,9 @@ function SecHead({ icon, title }) {
 
 function TradeHead({ icon, title }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: C.gold, padding: '10px 16px', borderRadius: '6px 6px 0 0', margin: '-22px -22px 20px -22px' }}>
-      <span style={{ fontSize: 18 }}>{icon}</span>
-      <h3 style={{ margin: 0, fontSize: 13, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: C.black, fontFamily: font }}>{title}</h3>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: C.gold, padding: '11px 18px', margin: '-22px -22px 22px -22px' }}>
+      <span style={{ fontSize: 20 }}>{icon}</span>
+      <span style={{ fontSize: 14, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: C.black, fontFamily: font }}>{title}</span>
     </div>
   );
 }
@@ -172,7 +172,7 @@ function Divider() { return <div style={{ borderTop: `1px solid ${C.border}`, ma
 
 function Card({ children, errorBorder, title, icon, trade }) {
   return (
-    <div style={{ background: C.white, border: `1px solid ${errorBorder ? C.error : C.border}`, borderRadius: 8, padding: 22, marginBottom: 24, boxShadow: '0 2px 6px rgba(0,0,0,0.07)', overflow: 'hidden' }}>
+    <div style={{ background: C.white, border: `1px solid ${errorBorder ? C.error : C.border}`, borderRadius: 8, padding: 22, marginBottom: 32, boxShadow: '0 2px 6px rgba(0,0,0,0.07)', overflow: 'hidden' }}>
       {trade && (title || icon) && <TradeHead icon={icon} title={title} />}
       {!trade && (title || icon) && <SecHead icon={icon} title={title} />}
       {children}
@@ -187,13 +187,20 @@ function Grid({ cols, children }) {
 function ScopeBtn({ label, icon, on, onChange }) {
   return (
     <div onClick={() => onChange(!on)} style={{
-      flex: 1, minWidth: 90, border: `2px solid ${on ? C.gold : C.border}`, borderRadius: 6,
-      padding: '12px 8px', cursor: 'pointer', background: on ? '#FFFBEE' : C.panel,
-      textAlign: 'center', userSelect: 'none', transition: 'all 0.12s',
+      display: 'flex', alignItems: 'center', gap: 10,
+      padding: '11px 16px', cursor: 'pointer',
+      border: `1px solid ${on ? C.border : C.border}`,
+      borderRadius: 6, background: C.white,
+      userSelect: 'none', minWidth: 140,
     }}>
-      <div style={{ fontSize: 20, marginBottom: 4 }}>{icon}</div>
-      <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: on ? C.goldDk : C.muted, fontFamily: font }}>{label}</div>
-      {on && <div style={{ marginTop: 3, color: C.gold, fontSize: 12 }}>✓</div>}
+      <div style={{
+        width: 18, height: 18, border: `2px solid ${on ? C.dark : C.border}`,
+        borderRadius: 3, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
+        background: C.white,
+      }}>
+        {on && <span style={{ fontSize: 12, color: C.dark, fontWeight: 700, lineHeight: 1 }}>✓</span>}
+      </div>
+      <span style={{ fontSize: 13, fontWeight: on ? 700 : 400, color: on ? C.dark : C.mid, fontFamily: font }}>{label}</span>
     </div>
   );
 }
@@ -331,7 +338,7 @@ function PreProductionForm({ job, existing }) {
         </Card>
 
         <Card errorBorder={!!errors.scope} title='Scope of Work' icon='🔍'>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
             <ScopeBtn label='Roof'          icon='🏠' on={scope.roof}    onChange={v => setScope(s => ({ ...s, roof: v }))} />
             <ScopeBtn label='Gutters'       icon='💧' on={scope.gutters} onChange={v => setScope(s => ({ ...s, gutters: v }))} />
             <ScopeBtn label='Siding'        icon='🧱' on={scope.siding}  onChange={v => setScope(s => ({ ...s, siding: v }))} />
