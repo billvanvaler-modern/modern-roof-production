@@ -172,7 +172,7 @@ function Divider() { return <div style={{ borderTop: `1px solid ${C.border}`, ma
 
 function Card({ children, errorBorder, title, icon, trade }) {
   return (
-    <div style={{ background: C.white, border: `1px solid ${errorBorder ? C.error : C.border}`, borderRadius: 8, padding: 22, marginBottom: 32, boxShadow: '0 2px 6px rgba(0,0,0,0.07)', overflow: 'hidden' }}>
+    <div style={{ background: C.white, border: `1px solid ${errorBorder ? C.error : C.border}`, borderRadius: 8, padding: 22, marginBottom: 24, boxShadow: '0 2px 6px rgba(0,0,0,0.07)', overflow: 'hidden' }}>
       {trade && (title || icon) && <TradeHead icon={icon} title={title} />}
       {!trade && (title || icon) && <SecHead icon={icon} title={title} />}
       {children}
@@ -187,20 +187,13 @@ function Grid({ cols, children }) {
 function ScopeBtn({ label, icon, on, onChange }) {
   return (
     <div onClick={() => onChange(!on)} style={{
-      display: 'flex', alignItems: 'center', gap: 10,
-      padding: '11px 16px', cursor: 'pointer',
-      border: `1px solid ${on ? C.border : C.border}`,
-      borderRadius: 6, background: C.white,
-      userSelect: 'none', minWidth: 140,
+      flex: 1, minWidth: 90, border: `2px solid ${on ? C.gold : C.border}`, borderRadius: 6,
+      padding: '12px 8px', cursor: 'pointer', background: on ? '#FFFBEE' : C.panel,
+      textAlign: 'center', userSelect: 'none', transition: 'all 0.12s',
     }}>
-      <div style={{
-        width: 18, height: 18, border: `2px solid ${on ? C.dark : C.border}`,
-        borderRadius: 3, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
-        background: C.white,
-      }}>
-        {on && <span style={{ fontSize: 12, color: C.dark, fontWeight: 700, lineHeight: 1 }}>✓</span>}
-      </div>
-      <span style={{ fontSize: 13, fontWeight: on ? 700 : 400, color: on ? C.dark : C.mid, fontFamily: font }}>{label}</span>
+      <div style={{ fontSize: 20, marginBottom: 4 }}>{icon}</div>
+      <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: on ? C.goldDk : C.muted, fontFamily: font }}>{label}</div>
+      {on && <div style={{ marginTop: 3, color: C.gold, fontSize: 12 }}>✓</div>}
     </div>
   );
 }
