@@ -706,8 +706,12 @@ function PreProductionForm({ job, existing }) {
     doc.setFontSize(8);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(...mid);
-    const scopeText = 'Contractor is authorized to perform all necessary work related to the above trades as approved by the insurance carrier and supplemented as required to meet current building codes, manufacturer specifications, and local ordinances. Work may include removal of damaged materials, installation of replacement materials, code-required upgrades, and debris removal. Customer acknowledges that Modern Roof intentionally orders additional materials to accommodate for waste. Any unused materials remain the property of Modern Roof. Please review all material selections carefully and contact your Modern Roof representative within 48 hours if you have any questions or changes.';
+    const scopeText = 'Contractor is authorized to perform all necessary work related to the above trades, as approved by the insurance carrier and/or supplemented as required to meet current building codes, manufacturer specifications, and local ordinances. Work may include but is not limited to removal of damaged materials, installation of replacement materials, code-required upgrades, and debris removal.
 
+Customer acknowledges that Modern Roof intentionally orders additional materials to ensure proper installation and accommodate for waste. Any unused materials remain the property of Modern Roof and will be collected or returned upon completion of the job.
+
+Please review all material selections above carefully. Contact your Modern Roof representative within 48 hours if you have questions or changes.';
+    const lines = doc.splitTextToSize(scopeText, W - margin * 2 - 8);
     doc.text(lines, margin + 4, y + 5);
     y += 34;
 
@@ -945,7 +949,7 @@ export default function JobPage() {
       setJob(jobData);
 
       const { data: preprod } = await supabase.from('preproduction').select('*').eq('job_id', id).single();
-      if (preprod) setExisting(preprod);
+      if (preprod) { setExisting(preprod); setCurrentPP(preprod); }
 
       setLoading(false);
     };
