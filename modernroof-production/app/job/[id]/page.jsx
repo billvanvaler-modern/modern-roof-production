@@ -159,12 +159,22 @@ function SecHead({ icon, title }) {
   );
 }
 
+function TradeHead({ icon, title }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: C.gold, padding: '10px 16px', borderRadius: '6px 6px 0 0', margin: '-22px -22px 20px -22px' }}>
+      <span style={{ fontSize: 18 }}>{icon}</span>
+      <h3 style={{ margin: 0, fontSize: 13, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: C.black, fontFamily: font }}>{title}</h3>
+    </div>
+  );
+}
+
 function Divider() { return <div style={{ borderTop: `1px solid ${C.border}`, margin: '18px 0' }} />; }
 
-function Card({ children, errorBorder, title, icon }) {
+function Card({ children, errorBorder, title, icon, trade }) {
   return (
-    <div style={{ background: C.white, border: `1px solid ${errorBorder ? C.error : C.border}`, borderRadius: 8, padding: 22, marginBottom: 16, boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-      {(title || icon) && <SecHead icon={icon} title={title} />}
+    <div style={{ background: C.white, border: `1px solid ${errorBorder ? C.error : C.border}`, borderRadius: 8, padding: 22, marginBottom: 24, boxShadow: '0 2px 6px rgba(0,0,0,0.07)', overflow: 'hidden' }}>
+      {trade && (title || icon) && <TradeHead icon={icon} title={title} />}
+      {!trade && (title || icon) && <SecHead icon={icon} title={title} />}
       {children}
     </div>
   );
@@ -332,7 +342,7 @@ function PreProductionForm({ job, existing }) {
         </Card>
 
         {scope.roof && (
-          <Card title='Roofing Details' icon='🏠'>
+          <Card title='Roofing Details' icon='🏠' trade>
             <Grid cols={2}>
               <CField label='Shingle Manufacturer' required value={roof.brand} error={errors['roof.brand']} options={Object.keys(SHINGLES)} onChange={v => setRoof(r => ({ ...r, brand: v, model: '', color: '' }))} />
               <CField label='Shingle Type' required value={roof.model} error={errors['roof.model']} options={modelList} locked={!roof.brand || roof.brand.startsWith('__other__')} lockedHint='Select manufacturer first...' onChange={v => setRoof(r => ({ ...r, model: v, color: '' }))} />
@@ -375,7 +385,7 @@ function PreProductionForm({ job, existing }) {
         )}
 
         {scope.gutters && (
-          <Card title='Gutter Details' icon='💧'>
+          <Card title='Gutter Details' icon='💧' trade>
             <Grid cols={2}>
               <CField label='Gutter Color' required value={gutters.color} error={errors['gut.color']} options={GUT_COLORS} onChange={v => setGutters(g => ({ ...g, color: v }))} />
               <PField label='Gutter Size' required value={gutters.size} error={errors['gut.size']} options={GUT_SIZES} onChange={v => setGutters(g => ({ ...g, size: v }))} />
@@ -387,7 +397,7 @@ function PreProductionForm({ job, existing }) {
         )}
 
         {scope.siding && (
-          <Card title='Siding Details' icon='🧱'>
+          <Card title='Siding Details' icon='🧱' trade>
             <Grid cols={2}>
               <CField label='Siding Manufacturer' required value={siding.brand} error={errors['sid.brand']} options={SID_BRANDS} onChange={v => setSiding(s => ({ ...s, brand: v }))} />
               <TxtInput label='Type / Product Line' required value={siding.typeLine} error={errors['sid.typeLine']} onChange={v => setSiding(s => ({ ...s, typeLine: v }))} placeholder='e.g. Monogram 46, HardiePlank...' />
@@ -399,7 +409,7 @@ function PreProductionForm({ job, existing }) {
         )}
 
         {scope.sf && (
-          <Card title='Soffit & Fascia' icon='🏗️'>
+          <Card title='Soffit & Fascia' icon='🏗️' trade>
             <Grid cols={2}>
               <CField label='Material' required value={sf.material} error={errors['sf.material']} options={SF_MATS} onChange={v => setSf(s => ({ ...s, material: v }))} />
               <CField label='Color' required value={sf.color} error={errors['sf.color']} options={SF_COLORS} onChange={v => setSf(s => ({ ...s, color: v }))} />
@@ -412,7 +422,7 @@ function PreProductionForm({ job, existing }) {
         )}
 
         {scope.windows && (
-          <Card title='Window Details' icon='🪟'>
+          <Card title='Window Details' icon='🪟' trade>
             <TxtField label='Window Notes' value={windows.notes} onChange={v => setWindows(w => ({ ...w, notes: v }))} placeholder='Style, size, count, color...' rows={3} span2 />
           </Card>
         )}
