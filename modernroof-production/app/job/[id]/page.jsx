@@ -3,6 +3,236 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { supabase } from '../../../lib/supabase';
 
+const generateCustomerPDF = async (job, pp) => {
+  const { default: jsPDF } = await import('jspdf');
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'letter' });
+
+  const gold = [245, 184, 0];
+  const dark = [34, 34, 34];
+  const mid  = [100, 100, 100];
+  const light = [247, 247, 245];
+  const dv = v => (v && v.startsWith('__other__:') ? v.slice(10) : v) || '—';
+  const date = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+
+  let y = 14;
+  const lm = 18; // left margin
+  const pw = 176; // page width usable
+
+  // Gold header bar
+  doc.setFillColor(...gold);
+  doc.rect(lm, y, 52, 7, 'F');
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8);
+  doc.setTextColor(17, 17, 17);
+  doc.text('MODERN ROOF', lm + 2, y + 5);
+
+  // Company info right side
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.setTextColor(...mid);
+  doc.text('Work Authorization Form', 194, y + 2, { align: 'right' });
+  doc.setFontSize(7);
+  doc.text(`Job #: ${job.roofr_job_id}`, 194, y + 6, { align: 'right' });
+  doc.text(`Date: ${date}`, 194, y + 10, { align: 'right' });
+  doc.text(`Rep: ${job.sales_rep || ''}`, 194, y + 14, { align: 'right' });
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7);
+  doc.setTextColor(...mid);
+  doc.text('931 East 86th Street, STE 111', lm, y + 11);
+  doc.text('Indianapolis, IN 46240  ·  (317) 883-9296  ·  modernroof.com', lm, y + 15);
+
+  y += 22;
+  // Gold line
+  doc.setDrawColor(...gold);
+  doc.setLineWidth(0.8);
+  doc.line(lm, y, 194, y);
+  y += 8;
+
+  // Customer block
+  doc.setFillColor(...light);
+  doc.rect(lm, y, pw, 22, 'F');
+  const fields = [
+    ['Customer', job.customer_name || '—'],
+    ['Phone', job.phone || '—'],
+    ['Email', job.email || '—'],
+    ['Address', `${job.address || ''}, ${job.city || ''}, ${job.state || ''} ${job.zip || ''}`],
+    ['Sales Rep', job.sales_rep || '—'],
+  ];
+  let fx = lm + 3;
+  fields.forEach((f, i) => {
+    const col = i < 3 ? i : i - 3;
+    const row = i < 3 ? 0 : 1;
+    const cx = lm + 3 + (col * 58);
+    const cy = y + 5 + (row * 11);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(6.5);
+    doc.setTextColor(...mid);
+    doc.text(f[0].toUpperCase(), cx, cy);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.setTextColor(...dark);
+    doc.text(f[1], cx, cy + 4);
+  });
+  y += 28;
+
+  // Section helper
+  const section = (title) => {
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7);
+    doc.setTextColor(...mid);
+    doc.text(title.toUpperCase(), lm, y);
+    doc.setDrawColor(220, 220, 220);
+    doc.setLineWidth(0.3);
+    doc.line(lm, y + 1, 194, y + 1);
+    y += 7;
+  };
+
+  const matRow = (label, value, col) => {
+    const cx = col === 0 ? lm : lm + pw / 2;
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(6.5);
+    doc.setTextColor(...mid);
+    doc.text(label.toUpperCase(), cx, y);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9.5);
+    doc.setTextColor(...dark);
+    doc.text(value, cx, y + 4.5);
+  };
+
+  // Scope checkboxes
+  section('Trade Work Authorized');
+  const scopes = [
+    { label: 'Roofing', on: pp.scope_roof },
+    { label: 'Gutters', on: pp.scope_gutters },
+    { label: 'Siding', on: pp.scope_siding },
+    { label: 'Windows', on: pp.scope_windows },
+    { label: 'Soffit & Fascia', on: pp.scope_sf },
+  ];
+  let sx = lm;
+  scopes.forEach(s => {
+    if (s.on) {
+      doc.setFillColor(...gold);
+      doc.rect(sx, y - 3.5, 4, 4, 'F');
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(7);
+      doc.setTextColor(17,17,17);
+      doc.text('✓', sx + 0.8, y);
+    } else {
+      doc.setDrawColor(...dark);
+      doc.setLineWidth(0.4);
+      doc.rect(sx, y - 3.5, 4, 4);
+    }
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.setTextColor(...dark);
+    doc.text(s.label, sx + 5.5, y);
+    sx += 36;
+  });
+  y += 10;
+
+  // Roofing
+  if (pp.scope_roof) {
+    section('Roofing Selections');
+    matRow('Shingle Manufacturer', dv(pp.shingle_brand), 0);
+    matRow('Shingle Model', dv(pp.shingle_type), 1);
+    y += 9;
+    matRow('Shingle Color', dv(pp.shingle_color), 0);
+    matRow('Drip Edge / Gutter Apron Color', dv(pp.drip_edge_color), 1);
+    y += 9;
+    matRow('Warranty', dv(pp.warranty), 0);
+    y += 9;
+  }
+
+  // Gutters
+  if (pp.scope_gutters) {
+    section('Gutter Selections');
+    matRow('Gutter Color', dv(pp.gutter_color), 0);
+    matRow('Gutter Size', dv(pp.gutter_size), 1);
+    y += 9;
+    matRow('Gutter Guards', pp.gutter_guards ? 'Yes' : 'No', 0);
+    if (pp.gutter_guards && pp.guard_type) matRow('Guard Type', pp.guard_type, 1);
+    y += 9;
+  }
+
+  // Siding
+  if (pp.scope_siding) {
+    section('Siding Selections');
+    matRow('Manufacturer', dv(pp.siding_brand), 0);
+    matRow('Product Line', dv(pp.siding_type_line), 1);
+    y += 9;
+    matRow('Style', dv(pp.siding_style), 0);
+    matRow('Color', dv(pp.siding_color), 1);
+    y += 9;
+  }
+
+  // Soffit & Fascia
+  if (pp.scope_sf) {
+    section('Soffit & Fascia Selections');
+    matRow('Material', dv(pp.sf_material), 0);
+    matRow('Color', dv(pp.sf_color), 1);
+    y += 9;
+    matRow('Soffit Width', dv(pp.soffit_width), 0);
+    matRow('Vented Soffit', pp.soffit_vented ? 'Yes' : 'No', 1);
+    y += 9;
+    matRow('Fascia Height', dv(pp.fascia_height), 0);
+    y += 9;
+  }
+
+  // Scope of work
+  section('Scope of Work');
+  doc.setFillColor(...light);
+  doc.rect(lm, y, pw, 28, 'F');
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.setTextColor(...mid);
+  const scopeText = 'Contractor is authorized to perform all necessary work related to the above trades, as approved by the insurance carrier and/or supplemented as required to meet current building codes, manufacturer specifications, and local ordinances. Work may include but is not limited to removal of damaged materials, installation of replacement materials, code-required upgrades, and debris removal.\n\nCustomer acknowledges that Modern Roof intentionally orders additional materials to ensure proper installation and accommodate for waste. Any unused materials remain the property of Modern Roof and will be collected or returned upon completion of the job. Please review all material selections above carefully. If you have any questions or changes, contact your Modern Roof representative within 48 hours of receiving this document.';
+  const lines = doc.splitTextToSize(scopeText, pw - 6);
+  doc.text(lines, lm + 3, y + 5);
+  y += 34;
+
+  // Signatures
+  doc.setDrawColor(220,220,220);
+  doc.setLineWidth(0.3);
+  doc.line(lm, y, 194, y);
+  y += 8;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7);
+  doc.setTextColor(...mid);
+  doc.text('CUSTOMER AUTHORIZATION', lm, y);
+  y += 6;
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.setTextColor(...mid);
+  doc.text('By signing below, the customer confirms that all material selections listed above are correct and authorizes Modern Roof to proceed with the work as described.', lm, y, { maxWidth: pw });
+  y += 12;
+
+  const sigW = 52;
+  const sigPositions = [lm, lm + 62, lm + 124];
+  const sigLabels = ['Customer Signature', 'Print Name', 'Date'];
+  sigPositions.forEach((sx, i) => {
+    doc.setDrawColor(...dark);
+    doc.setLineWidth(0.6);
+    doc.line(sx, y + 14, sx + sigW, y + 14);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7);
+    doc.setTextColor(...mid);
+    doc.text(sigLabels[i].toUpperCase(), sx, y + 18);
+  });
+
+  // Footer
+  doc.setDrawColor(220,220,220);
+  doc.setLineWidth(0.3);
+  doc.line(lm, 270, 194, 270);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7);
+  doc.setTextColor(...mid);
+  doc.text('Modern Roof  ·  modernroof.com  ·  (317) 883-9296', lm, 274);
+  doc.text(`Job #${job.roofr_job_id}`, 194, 274, { align: 'right' });
+
+  doc.save(`ModernRoof-${job.roofr_job_id}-CustomerAuth.pdf`);
+};
+
 const font = "'DM Sans', sans-serif";
 const C = {
   gold: '#F5B800', goldDk: '#C99600',
@@ -189,6 +419,7 @@ function PreProductionForm({ job, existing }) {
   const [errors, setErrors] = useState({});
   const [submitted, setSubmitted] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [currentPP, setCurrentPP] = useState(null);
 
   const modelList = roof.brand && !roof.brand.startsWith('__other__') ? Object.keys(SHINGLES[roof.brand] || {}) : [];
   const colorList = roof.brand && !roof.brand.startsWith('__other__') && roof.model && !roof.model.startsWith('__other__') ? (SHINGLES[roof.brand]?.[roof.model] || []) : [];
@@ -272,7 +503,259 @@ function PreProductionForm({ job, existing }) {
       alert('Save failed: ' + error.message);
       return;
     }
+    setCurrentPP(payload);
     setSubmitted(true);
+  };
+
+  const generateCustomerPDF = async () => {
+    const { default: jsPDF } = await import('jspdf');
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'letter' });
+
+    const gold = '#F5B800';
+    const dark = [34, 34, 34];
+    const mid = [100, 100, 100];
+    const W = 215.9;
+    const margin = 18;
+    let y = 0;
+
+    // Header bar
+    doc.setFillColor(245, 184, 0);
+    doc.rect(0, 0, W, 12, 'F');
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(17, 17, 17);
+    doc.text('MODERN ROOF', margin, 8);
+
+    // Company info right side
+    doc.setFontSize(7);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(...mid);
+    doc.text('931 East 86th Street, STE 111  ·  Indianapolis, IN 46240  ·  (317) 883-9296  ·  modernroof.com', W - margin, 8, { align: 'right' });
+
+    y = 22;
+
+    // Title
+    doc.setFontSize(16);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...dark);
+    doc.text('Work Authorization Form', margin, y);
+
+    // Job info right
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(...mid);
+    doc.text(`Job #: ${job.roofr_job_id}`, W - margin, y - 4, { align: 'right' });
+    doc.text(`Date: ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`, W - margin, y + 1, { align: 'right' });
+    doc.text(`Rep: ${job.sales_rep}`, W - margin, y + 6, { align: 'right' });
+
+    y += 10;
+    doc.setDrawColor(220, 220, 220);
+    doc.setLineWidth(0.3);
+    doc.line(margin, y, W - margin, y);
+    y += 8;
+
+    // Customer block
+    doc.setFillColor(247, 247, 245);
+    doc.rect(margin, y, W - margin * 2, 22, 'F');
+    const cx = margin + 4;
+    const colW = (W - margin * 2 - 8) / 3;
+
+    const fields = [
+      ['CUSTOMER', job.customer_name],
+      ['PHONE', job.phone || '—'],
+      ['EMAIL', job.email || '—'],
+      ['ADDRESS', `${job.address}, ${job.city}, ${job.state} ${job.zip}`],
+      ['SALES REP', job.sales_rep],
+    ];
+
+    fields.forEach((f, i) => {
+      const col = i % 3;
+      const row = Math.floor(i / 3);
+      const fx = cx + col * colW;
+      const fy = y + 5 + row * 11;
+      doc.setFontSize(6.5);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(...mid);
+      doc.text(f[0], fx, fy);
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(...dark);
+      doc.text(f[1] || '—', fx, fy + 4);
+    });
+
+    y += 28;
+
+    // Scope checkboxes
+    doc.setFontSize(7);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...mid);
+    doc.text('TRADE WORK AUTHORIZED', margin, y);
+    y += 5;
+
+    const scopes = [
+      ['Roofing', existing?.scope_roof],
+      ['Gutters', existing?.scope_gutters],
+      ['Siding', existing?.scope_siding],
+      ['Windows', existing?.scope_windows],
+      ['Soffit & Fascia', existing?.scope_sf],
+    ];
+
+    let sx = margin;
+    scopes.forEach(([label, on]) => {
+      doc.setDrawColor(...dark);
+      doc.setLineWidth(0.5);
+      if (on) {
+        doc.setFillColor(245, 184, 0);
+        doc.rect(sx, y - 3.5, 4, 4, 'F');
+        doc.setFontSize(7);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(17, 17, 17);
+        doc.text('✓', sx + 0.7, y);
+      } else {
+        doc.rect(sx, y - 3.5, 4, 4);
+      }
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(...dark);
+      doc.text(label, sx + 6, y);
+      sx += doc.getTextWidth(label) + 14;
+    });
+
+    y += 10;
+
+    const sectionTitle = (title) => {
+      doc.setFontSize(7);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(...mid);
+      doc.text(title, margin, y);
+      doc.setDrawColor(220, 220, 220);
+      doc.setLineWidth(0.3);
+      doc.line(margin, y + 1.5, W - margin, y + 1.5);
+      y += 7;
+    };
+
+    const twoCol = (items) => {
+      const colW2 = (W - margin * 2) / 2;
+      items.forEach((item, i) => {
+        const col = i % 2;
+        const row = Math.floor(i / 2);
+        if (col === 0 && i > 0) y += 0;
+        const fx = margin + col * colW2;
+        const fy = y + row * 10;
+        doc.setFontSize(6.5);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(...mid);
+        doc.text(item[0], fx, fy);
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(...dark);
+        doc.text(item[1] || '—', fx, fy + 4.5);
+      });
+      const rows = Math.ceil(items.length / 2);
+      y += rows * 10 + 4;
+    };
+
+    const dv = v => (v && v.startsWith('__other__:') ? v.slice(10) : v) || '—';
+
+    if (existing?.scope_roof) {
+      sectionTitle('ROOFING SELECTIONS');
+      twoCol([
+        ['SHINGLE MANUFACTURER', dv(existing.shingle_brand)],
+        ['SHINGLE MODEL', dv(existing.shingle_type)],
+        ['SHINGLE COLOR', dv(existing.shingle_color)],
+        ['DRIP EDGE / GUTTER APRON COLOR', dv(existing.drip_edge_color)],
+        ['WARRANTY', dv(existing.warranty)],
+      ]);
+    }
+
+    if (existing?.scope_gutters) {
+      sectionTitle('GUTTER SELECTIONS');
+      twoCol([
+        ['GUTTER COLOR', dv(existing.gutter_color)],
+        ['GUTTER SIZE', dv(existing.gutter_size)],
+        ['GUTTER GUARDS', existing.gutter_guards ? 'Yes' : 'No'],
+        ...(existing.gutter_guards && existing.guard_type ? [['GUARD TYPE', existing.guard_type]] : []),
+      ]);
+    }
+
+    if (existing?.scope_siding) {
+      sectionTitle('SIDING SELECTIONS');
+      twoCol([
+        ['MANUFACTURER', dv(existing.siding_brand)],
+        ['PRODUCT LINE', dv(existing.siding_type_line)],
+        ['STYLE', dv(existing.siding_style)],
+        ['COLOR', dv(existing.siding_color)],
+      ]);
+    }
+
+    if (existing?.scope_sf) {
+      sectionTitle('SOFFIT & FASCIA SELECTIONS');
+      twoCol([
+        ['MATERIAL', dv(existing.sf_material)],
+        ['COLOR', dv(existing.sf_color)],
+        ['SOFFIT WIDTH', dv(existing.soffit_width)],
+        ['VENTED SOFFIT', existing.soffit_vented ? 'Yes' : 'No'],
+        ['FASCIA HEIGHT', dv(existing.fascia_height)],
+      ]);
+    }
+
+    // Scope of work
+    sectionTitle('SCOPE OF WORK');
+    doc.setFillColor(247, 247, 245);
+    doc.rect(margin, y, W - margin * 2, 28, 'F');
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(...mid);
+    const scopeText = 'Contractor is authorized to perform all necessary work related to the above trades, as approved by the insurance carrier and/or supplemented as required to meet current building codes, manufacturer specifications, and local ordinances. Work may include but is not limited to removal of damaged materials, installation of replacement materials, code-required upgrades, and debris removal.
+
+Customer acknowledges that Modern Roof intentionally orders additional materials to ensure proper installation and accommodate for waste. Any unused materials remain the property of Modern Roof and will be collected or returned upon completion of the job.
+
+Please review all material selections above carefully. Contact your Modern Roof representative within 48 hours if you have questions or changes.';
+    const lines = doc.splitTextToSize(scopeText, W - margin * 2 - 8);
+    doc.text(lines, margin + 4, y + 5);
+    y += 34;
+
+    // Signature block
+    doc.setDrawColor(220, 220, 220);
+    doc.setLineWidth(0.3);
+    doc.line(margin, y, W - margin, y);
+    y += 10;
+
+    doc.setFontSize(7);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...mid);
+    doc.text('CUSTOMER AUTHORIZATION', margin, y);
+    y += 5;
+
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(...mid);
+    const authText = 'By signing below, the customer confirms that all material selections and project details listed above are correct and authorizes Modern Roof to proceed with the work as described.';
+    const authLines = doc.splitTextToSize(authText, W - margin * 2);
+    doc.text(authLines, margin, y);
+    y += 12;
+
+    const sigCols = ['Customer Signature', 'Print Name', 'Date'];
+    const sigW = (W - margin * 2 - 16) / 3;
+    sigCols.forEach((label, i) => {
+      const sx2 = margin + i * (sigW + 8);
+      doc.setDrawColor(...dark);
+      doc.setLineWidth(0.8);
+      doc.line(sx2, y + 12, sx2 + sigW, y + 12);
+      doc.setFontSize(7);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(...mid);
+      doc.text(label.toUpperCase(), sx2, y + 16);
+    });
+
+    // Footer
+    doc.setFontSize(7);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(...mid);
+    doc.text('Modern Roof  ·  modernroof.com  ·  (317) 883-9296', margin, 272);
+    doc.text(`Job #${job.roofr_job_id}`, W - margin, 272, { align: 'right' });
+
+    doc.save(`ModernRoof-${job.roofr_job_id}-CustomerAuth.pdf`);
   };
 
   if (submitted) return (
@@ -284,10 +767,10 @@ function PreProductionForm({ job, existing }) {
           Job <strong style={{ color: C.dark }}>{job.roofr_job_id}</strong> for <strong style={{ color: C.dark }}>{job.customer_name}</strong> has been saved.
         </p>
         <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
-          <a href={`/api/pdf/${job.roofr_job_id}`} target="_blank" rel="noopener noreferrer"
-            style={{ background: C.gold, color: C.black, padding: '11px 24px', borderRadius: 4, cursor: 'pointer', fontSize: 13, fontFamily: font, fontWeight: 700, textDecoration: 'none', display: 'inline-block' }}>
+          <button onClick={generateCustomerPDF}
+            style={{ background: C.gold, color: C.black, border: 'none', padding: '11px 24px', borderRadius: 4, cursor: 'pointer', fontSize: 13, fontFamily: font, fontWeight: 700 }}>
             ⬇ Download Customer PDF
-          </a>
+          </button>
           <button onClick={() => setSubmitted(false)} style={{ background: C.white, border: `1px solid ${C.border}`, color: C.dark, padding: '11px 24px', borderRadius: 4, cursor: 'pointer', fontSize: 13, fontFamily: font }}>← Edit Form</button>
         </div>
       </div>
