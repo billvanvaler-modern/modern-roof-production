@@ -307,9 +307,6 @@ function PreProductionForm({ job, existing }) {
     doc.setTextColor(...mid);
     const scopeText = 'Authorized work per insurance carrier approval.';
     
-Customer acknowledges that Modern Roof intentionally orders additional materials to ensure proper installation and accommodate for waste. Any unused materials remain the property of Modern Roof and will be collected or returned upon completion of the job.
-
-Please review all material selections above carefully. Contact your Modern Roof representative within 48 hours if you have questions or changes.';
     const lines = doc.splitTextToSize(scopeText, W - margin * 2 - 8);
     doc.text(lines, margin + 4, y + 5);
     y += 34;
