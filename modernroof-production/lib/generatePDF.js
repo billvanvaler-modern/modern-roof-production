@@ -10,6 +10,13 @@ export const generateCustomerPDF = async (job, pp) => {
   const dv = (v) => (v && v.startsWith('__other__:') ? v.slice(10) : v) || '—';
   const date = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
 
+  const checkY = (needed) => {
+    if (y + needed > 255) {
+      doc.addPage();
+      y = 16;
+    }
+  };
+
   const lm = 18;
   const rm = 194;
   const pw = rm - lm;
@@ -140,6 +147,7 @@ export const generateCustomerPDF = async (job, pp) => {
   });
   y += 14;
 
+  checkY(30);
   // ── Roofing ─────────────────────────────────────────────────────────────────
   if (pp.scope_roof) {
     tradeBanner('', 'Roofing Selections');
@@ -153,6 +161,7 @@ export const generateCustomerPDF = async (job, pp) => {
     y += 12;
   }
 
+  checkY(30);
   // ── Gutters ─────────────────────────────────────────────────────────────────
   if (pp.scope_gutters) {
     tradeBanner('', 'Gutter Selections');
@@ -164,6 +173,7 @@ export const generateCustomerPDF = async (job, pp) => {
     y += 12;
   }
 
+  checkY(30);
   // ── Siding ──────────────────────────────────────────────────────────────────
   if (pp.scope_siding) {
     tradeBanner('', 'Siding Selections');
@@ -175,6 +185,7 @@ export const generateCustomerPDF = async (job, pp) => {
     y += 12;
   }
 
+  checkY(30);
   // ── Soffit & Fascia ─────────────────────────────────────────────────────────
   if (pp.scope_sf) {
     tradeBanner('', 'Soffit & Fascia Selections');
@@ -188,6 +199,7 @@ export const generateCustomerPDF = async (job, pp) => {
     y += 12;
   }
 
+  checkY(50);
   // ── Scope of Work ───────────────────────────────────────────────────────────
   subSection('Scope of Work');
   doc.setFillColor(...light);
@@ -207,6 +219,7 @@ export const generateCustomerPDF = async (job, pp) => {
   });
   y += 36;
 
+  checkY(50);
   // ── Signatures ──────────────────────────────────────────────────────────────
   doc.setDrawColor(200, 200, 200);
   doc.setLineWidth(0.3);
