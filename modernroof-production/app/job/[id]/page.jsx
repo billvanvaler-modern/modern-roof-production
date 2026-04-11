@@ -239,24 +239,38 @@ function PreProductionForm({ job }) {
   const handleSubmit = async () => {
     if (!validate()) return;
     setSaving(true);
+
+    // First delete any existing record for this job
+    await supabase.from('preproduction').delete().eq('job_id', job.roofr_job_id);
+
     const payload = {
       job_id: job.roofr_job_id,
       scope_roof: scope.roof, scope_gutters: scope.gutters, scope_siding: scope.siding, scope_windows: scope.windows, scope_sf: scope.sf,
-      shingle_brand: roof.brand, shingle_type: roof.model, shingle_color: roof.color,
-      hip_ridge: roof.hipRidge, drip_edge_color: roof.dripEdge, warranty: roof.warranty,
-      existing_layers: roof.layers, osb_sheets: parseInt(roof.osb) || 0,
+      shingle_brand: roof.brand || null, shingle_type: roof.model || null, shingle_color: roof.color || null,
+      hip_ridge: roof.hipRidge || null, drip_edge_color: roof.dripEdge || null, warranty: roof.warranty || null,
+      existing_layers: roof.layers || null,
+      osb_sheets: roof.osb ? parseInt(roof.osb) : null,
       pj_1in: parseInt(roof.pj1)||0, pj_2in: parseInt(roof.pj2)||0, pj_3in: parseInt(roof.pj3)||0, pj_4in: parseInt(roof.pj4)||0,
       split_boots: parseInt(roof.splitBoots)||0, upgraded_boots: roof.upgradedBoots === 'Yes',
-      existing_vent: roof.existingVent, replacement_vent: roof.replVent,
-      quarrix_plugs: parseInt(roof.quarrixPlugs)||0, box_vent_count: parseInt(roof.boxVentCount)||0, box_vent_color: roof.boxVentColor,
-      material_spot: roof.materialSpot, dump_trailer: roof.dumpTrailer, roof_notes: roof.notes,
-      gutter_color: gutters.color, gutter_size: gutters.size, gutter_guards: gutters.guards === 'Yes', guard_type: gutters.guardType, gutter_notes: gutters.notes,
-      siding_brand: siding.brand, siding_type_line: siding.typeLine, siding_style: siding.style, siding_color: siding.color, siding_notes: siding.notes,
-      sf_material: sf.material, sf_color: sf.color, soffit_width: sf.soffitWidth, soffit_vented: sf.vented === 'Yes', fascia_height: sf.fasciaHeight, sf_notes: sf.notes,
-      window_notes: windows.notes, overall_notes: otherNotes,
+      existing_vent: roof.existingVent || null, replacement_vent: roof.replVent || null,
+      quarrix_plugs: parseInt(roof.quarrixPlugs)||0, box_vent_count: parseInt(roof.boxVentCount)||0,
+      box_vent_color: roof.boxVentColor || null,
+      material_spot: roof.materialSpot || null, dump_trailer: roof.dumpTrailer || null, roof_notes: roof.notes || null,
+      gutter_color: gutters.color || null, gutter_size: gutters.size || null,
+      gutter_guards: gutters.guards === 'Yes', guard_type: gutters.guardType || null, gutter_notes: gutters.notes || null,
+      siding_brand: siding.brand || null, siding_type_line: siding.typeLine || null,
+      siding_style: siding.style || null, siding_color: siding.color || null, siding_notes: siding.notes || null,
+      sf_material: sf.material || null, sf_color: sf.color || null, soffit_width: sf.soffitWidth || null,
+      soffit_vented: sf.vented === 'Yes', fascia_height: sf.fasciaHeight || null, sf_notes: sf.notes || null,
+      window_notes: windows.notes || null, overall_notes: otherNotes || null,
     };
-    await supabase.from('preproduction').upsert(payload, { onConflict: 'job_id' });
+
+    const { error } = await supabase.from('preproduction').insert(payload);
     setSaving(false);
+    if (error) {
+      alert('Save failed: ' + error.message);
+      return;
+    }
     setSubmitted(true);
   };
 
