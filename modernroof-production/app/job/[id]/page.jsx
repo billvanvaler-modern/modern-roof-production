@@ -177,14 +177,15 @@ function ScopeBtn({ label, icon, on, onChange }) {
 }
 
 // ─── Main Form ────────────────────────────────────────────────────────────────
-function PreProductionForm({ job }) {
-  const [scope, setScope] = useState({ roof: false, gutters: false, siding: false, windows: false, sf: false });
-  const [roof, setRoof] = useState({ brand:'', model:'', color:'', hipRidge:'', dripEdge:'', warranty:'', layers:'', osb:'', pj1:'', pj2:'', pj3:'', pj4:'', splitBoots:'', upgradedBoots:'', existingVent:'', replVent:'', quarrixPlugs:'', boxVentCount:'', boxVentColor:'', materialSpot:'', dumpTrailer:'', notes:'' });
-  const [gutters, setGutters] = useState({ color:'', size:'', guards:'', guardType:'', notes:'' });
-  const [siding, setSiding] = useState({ style:'', brand:'', typeLine:'', color:'', notes:'' });
-  const [windows, setWindows] = useState({ notes:'' });
-  const [sf, setSf] = useState({ material:'', color:'', soffitWidth:'', vented:'', fasciaHeight:'', notes:'' });
-  const [otherNotes, setOtherNotes] = useState('');
+function PreProductionForm({ job, existing }) {
+  const ex = existing || {};
+  const [scope, setScope] = useState({ roof: ex.scope_roof||false, gutters: ex.scope_gutters||false, siding: ex.scope_siding||false, windows: ex.scope_windows||false, sf: ex.scope_sf||false });
+  const [roof, setRoof] = useState({ brand: ex.shingle_brand||'', model: ex.shingle_type||'', color: ex.shingle_color||'', hipRidge: ex.hip_ridge||'', dripEdge: ex.drip_edge_color||'', warranty: ex.warranty||'', layers: ex.existing_layers||'', osb: ex.osb_sheets?.toString()||'', pj1: ex.pj_1in?.toString()||'', pj2: ex.pj_2in?.toString()||'', pj3: ex.pj_3in?.toString()||'', pj4: ex.pj_4in?.toString()||'', splitBoots: ex.split_boots?.toString()||'', upgradedBoots: ex.upgraded_boots ? 'Yes' : '', existingVent: ex.existing_vent||'', replVent: ex.replacement_vent||'', quarrixPlugs: ex.quarrix_plugs?.toString()||'', boxVentCount: ex.box_vent_count?.toString()||'', boxVentColor: ex.box_vent_color||'', materialSpot: ex.material_spot||'', dumpTrailer: ex.dump_trailer||'', notes: ex.roof_notes||'' });
+  const [gutters, setGutters] = useState({ color: ex.gutter_color||'', size: ex.gutter_size||'', guards: ex.gutter_guards ? 'Yes' : '', guardType: ex.guard_type||'', notes: ex.gutter_notes||'' });
+  const [siding, setSiding] = useState({ style: ex.siding_style||'', brand: ex.siding_brand||'', typeLine: ex.siding_type_line||'', color: ex.siding_color||'', notes: ex.siding_notes||'' });
+  const [windows, setWindows] = useState({ notes: ex.window_notes||'' });
+  const [sf, setSf] = useState({ material: ex.sf_material||'', color: ex.sf_color||'', soffitWidth: ex.soffit_width||'', vented: ex.soffit_vented ? 'Yes' : '', fasciaHeight: ex.fascia_height||'', notes: ex.sf_notes||'' });
+  const [otherNotes, setOtherNotes] = useState(ex.overall_notes||'');
   const [errors, setErrors] = useState({});
   const [submitted, setSubmitted] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -448,14 +449,19 @@ function PreProductionForm({ job }) {
 export default function JobPage() {
   const { id } = useParams();
   const [job, setJob] = useState(null);
+  const [existing, setExisting] = useState(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
 
   useEffect(() => {
     const load = async () => {
-      const { data } = await supabase.from('jobs').select('*').eq('roofr_job_id', id).single();
-      if (!data) { setNotFound(true); setLoading(false); return; }
-      setJob(data);
+      const { data: jobData } = await supabase.from('jobs').select('*').eq('roofr_job_id', id).single();
+      if (!jobData) { setNotFound(true); setLoading(false); return; }
+      setJob(jobData);
+
+      const { data: preprod } = await supabase.from('preproduction').select('*').eq('job_id', id).single();
+      if (preprod) setExisting(preprod);
+
       setLoading(false);
     };
     load();
@@ -464,5 +470,5 @@ export default function JobPage() {
   if (loading) return <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: font, color: C.muted }}>Loading job…</div>;
   if (notFound) return <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: font, color: C.muted }}>Job not found: {id}</div>;
 
-  return <PreProductionForm job={job} />;
+  return <PreProductionForm job={job} existing={existing} />;
 }
