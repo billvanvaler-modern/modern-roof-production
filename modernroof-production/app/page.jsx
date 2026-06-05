@@ -21,7 +21,7 @@ function StatusBadge({ status, jobId, onUpdate }) {
 
   const update = async (key) => {
     setOpen(false);
-    await supabase.from('jobs').update({ job_status: key }).eq('roofr_job_id', jobId);
+    await supabase.from('jobs').update({ status: key }).eq('id', jobId);
     onUpdate(jobId, key);
   };
 
@@ -79,24 +79,24 @@ export default function Home() {
   }, []);
 
   const updateStatus = (jobId, newStatus) => {
-    setJobs(prev => prev.map(j => j.roofr_job_id === jobId ? { ...j, job_status: newStatus } : j));
+    setJobs(prev => prev.map(j => j.id === jobId ? { ...j, status: newStatus } : j));
   };
 
   const filtered = jobs.filter(j => {
     const matchSearch =
       j.customer_name?.toLowerCase().includes(search.toLowerCase()) ||
-      j.roofr_job_id?.toLowerCase().includes(search.toLowerCase()) ||
+      j.id?.toLowerCase().includes(search.toLowerCase()) ||
       j.sales_rep?.toLowerCase().includes(search.toLowerCase()) ||
       j.address?.toLowerCase().includes(search.toLowerCase());
-    const matchFilter = filter === 'all' || j.job_status === filter;
+    const matchFilter = filter === 'all' || j.status === filter;
     return matchSearch && matchFilter;
   });
 
   const counts = {
     all: jobs.length,
-    not_started: jobs.filter(j => j.job_status === 'not_started').length,
-    in_process:  jobs.filter(j => j.job_status === 'in_process').length,
-    complete:    jobs.filter(j => j.job_status === 'complete').length,
+    not_started: jobs.filter(j => j.status === 'not_started').length,
+    in_process:  jobs.filter(j => j.status === 'in_process').length,
+    complete:    jobs.filter(j => j.status === 'complete').length,
   };
 
   return (
@@ -107,9 +107,14 @@ export default function Home() {
           <div style={{ background: C.gold, color: '#111', fontWeight: 700, fontSize: 12, letterSpacing: '0.12em', padding: '4px 9px', borderRadius: 3 }}>MODERN ROOF</div>
           <span style={{ fontSize: 16, fontWeight: 700, color: C.dark }}>Pre-Production</span>
         </div>
-        <Link href="/admin" style={{ fontSize: 12, color: C.muted, textDecoration: 'none', border: `1px solid ${C.border}`, padding: '6px 12px', borderRadius: 4, background: C.white }}>
-          ⚙️ Admin
-        </Link>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <Link href="/quote" style={{ fontSize: 13, fontWeight: 700, color: '#111', textDecoration: 'none', background: C.gold, padding: '7px 16px', borderRadius: 4 }}>
+            + New Quote
+          </Link>
+          <Link href="/admin" style={{ fontSize: 12, color: C.muted, textDecoration: 'none', border: `1px solid ${C.border}`, padding: '6px 12px', borderRadius: 4, background: C.white }}>
+            ⚙️ Admin
+          </Link>
+        </div>
       </div>
 
       <div style={{ maxWidth: 860, margin: '0 auto', padding: '24px 16px' }}>
@@ -150,7 +155,7 @@ export default function Home() {
             {filtered.map(job => {
               const hasPreprod = job.preproduction?.length > 0;
               return (
-                <Link key={job.id} href={`/job/${job.roofr_job_id}`} style={{ textDecoration: 'none' }}>
+                <Link key={job.id} href={`/job/${job.id}`} style={{ textDecoration: 'none' }}>
                   <div style={{
                     background: C.white, border: `1px solid ${C.border}`, borderRadius: 8,
                     padding: '14px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -159,14 +164,14 @@ export default function Home() {
                     <div>
                       <div style={{ fontWeight: 700, fontSize: 15, color: C.dark, marginBottom: 3 }}>{job.customer_name}</div>
                       <div style={{ fontSize: 12, color: C.muted }}>
-                        {job.address}{job.city ? `, ${job.city}` : ''} &nbsp;·&nbsp; Rep: {job.sales_rep} &nbsp;·&nbsp; {job.roofr_job_id}
+                        {job.address}{job.city ? `, ${job.city}` : ''}{job.sales_rep ? ` · Rep: ${job.sales_rep}` : ''}
                       </div>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
                       {hasPreprod && (
                         <span style={{ fontSize: 11, color: '#16A34A', fontWeight: 600 }}>✓ Form Complete</span>
                       )}
-                      <StatusBadge status={job.job_status || 'not_started'} jobId={job.roofr_job_id} onUpdate={updateStatus} />
+                      <StatusBadge status={job.status || 'not_started'} jobId={job.id} onUpdate={updateStatus} />
                       <span style={{ color: C.muted, fontSize: 18 }}>›</span>
                     </div>
                   </div>

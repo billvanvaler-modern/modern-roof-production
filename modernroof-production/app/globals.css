@@ -1,4 +1,23 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Existing production app styles — override Tailwind base where needed */
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { font-family: 'DM Sans', sans-serif; background: #F7F7F5; color: #333; }
 select { appearance: none; }
 textarea { resize: vertical; }
+
+/* Print: hide screen-only content */
+@media print {
+  @page { size: letter; margin: 0.6in; }
+  body {
+    font-size: 11px;
+    font-family: Arial, sans-serif;
+    color: #000;
+    background: #fff;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .print\:hidden { display: none !important; }
+}

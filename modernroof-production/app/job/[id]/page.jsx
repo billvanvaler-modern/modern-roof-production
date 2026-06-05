@@ -262,9 +262,9 @@ function PreProductionForm({ job, existing }) {
   const handleSubmit = async () => {
     if (!validate()) return;
     setSaving(true);
-    await supabase.from('preproduction').delete().eq('job_id', job.roofr_job_id);
+    await supabase.from('preproduction').delete().eq('job_id', job.id);
     const payload = {
-      job_id: job.roofr_job_id,
+      job_id: job.id,
       scope_roof: scope.roof, scope_gutters: scope.gutters, scope_siding: scope.siding, scope_windows: scope.windows, scope_sf: scope.sf,
       shingle_brand: roof.brand||null, shingle_type: roof.model||null, shingle_color: roof.color||null,
       hip_ridge: roof.hipRidge||null, drip_edge_color: roof.dripEdge||null, warranty: roof.warranty||null,
@@ -292,7 +292,7 @@ function PreProductionForm({ job, existing }) {
         <div style={{ fontSize: 48, marginBottom: 12 }}>✅</div>
         <h2 style={{ margin: '0 0 8px', fontSize: 20, fontWeight: 700, color: C.dark }}>Pre-Production Submitted</h2>
         <p style={{ color: C.muted, lineHeight: 1.7, margin: '0 0 20px', fontSize: 13 }}>
-          Job <strong style={{ color: C.dark }}>{job.roofr_job_id}</strong> for <strong style={{ color: C.dark }}>{job.customer_name}</strong> has been saved.
+          Job <strong style={{ color: C.dark }}>{job.id}</strong> for <strong style={{ color: C.dark }}>{job.customer_name}</strong> has been saved.
         </p>
         <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
           <button onClick={() => generateCustomerPDF(job, currentPP)} style={{ background: C.gold, color: C.black, border: 'none', padding: '11px 24px', borderRadius: 4, cursor: 'pointer', fontSize: 13, fontFamily: font, fontWeight: 700 }}>
@@ -314,7 +314,7 @@ function PreProductionForm({ job, existing }) {
           <span style={{ fontSize: 16, fontWeight: 700, color: C.dark }}>Pre-Production Form</span>
         </div>
         <div style={{ fontSize: 12, color: C.muted, background: C.panel, border: `1px solid ${C.border}`, borderRadius: 4, padding: '6px 12px' }}>
-          Job: <strong style={{ color: C.dark }}>{job.roofr_job_id}</strong>
+          Job: <strong style={{ color: C.dark }}>{job.id}</strong>
         </div>
       </div>
 
@@ -457,7 +457,7 @@ export default function JobPage() {
 
   useEffect(() => {
     const load = async () => {
-      const { data: jobData } = await supabase.from('jobs').select('*').eq('roofr_job_id', id).single();
+      const { data: jobData } = await supabase.from('jobs').select('*').eq('id', id).single();
       if (!jobData) { setNotFound(true); setLoading(false); return; }
       setJob(jobData);
       const { data: preprod } = await supabase.from('preproduction').select('*').eq('job_id', id).single();
