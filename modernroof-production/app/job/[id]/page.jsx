@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { supabase } from '../../../lib/supabase';
 import { generateCustomerPDF } from '../../../lib/generatePDF';
 
@@ -308,15 +309,18 @@ function PreProductionForm({ job, existing }) {
 
   return (
     <div style={{ minHeight: '100vh', background: C.panel, fontFamily: font }}>
-      <div style={{ background: C.white, borderBottom: `3px solid ${C.gold}`, padding: '16px 28px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10, boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{ background: C.gold, color: C.black, fontWeight: 700, fontSize: 12, letterSpacing: '0.12em', padding: '4px 9px', borderRadius: 3 }}>MODERN ROOF</div>
-          <span style={{ fontSize: 16, fontWeight: 700, color: C.dark }}>Pre-Production Form</span>
+      <header className="bg-[#1a2744] text-white px-6 py-4">
+        <div className="max-w-4xl mx-auto flex items-center justify-between">
+          <div>
+            <h1 className="text-xl font-bold tracking-tight">Modern Roof</h1>
+            <p className="text-blue-300 text-xs">Pre-Production Form</p>
+          </div>
+          <div className="flex items-center gap-4">
+            <span className="text-blue-300 text-sm">{job.customer_name}</span>
+            <Link href="/" className="text-blue-300 hover:text-white text-sm transition-colors">← Dashboard</Link>
+          </div>
         </div>
-        <div style={{ fontSize: 12, color: C.muted, background: C.panel, border: `1px solid ${C.border}`, borderRadius: 4, padding: '6px 12px' }}>
-          Job: <strong style={{ color: C.dark }}>{job.id}</strong>
-        </div>
-      </div>
+      </header>
 
       <div style={{ maxWidth: 740, margin: '0 auto', padding: '22px 16px 60px' }}>
         <Card title='Job Information' icon='📋'>
@@ -448,12 +452,32 @@ function PreProductionForm({ job, existing }) {
   );
 }
 
+function WorkflowStep({ n, label, status }) {
+  return (
+    <div className={`flex flex-col items-center gap-1 ${status === 'locked' ? 'opacity-35' : ''}`}>
+      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
+        status === 'done'   ? 'bg-green-500 text-white' :
+        status === 'active' ? 'bg-blue-600 text-white'  :
+                              'bg-gray-200 text-gray-500'
+      }`}>
+        {status === 'done' ? '✓' : n}
+      </div>
+      <span className={`text-xs font-medium whitespace-nowrap ${status === 'active' ? 'text-gray-900' : 'text-gray-500'}`}>
+        {label}
+      </span>
+    </div>
+  );
+}
+
 export default function JobPage() {
   const { id } = useParams();
+  const router = useRouter();
   const [job, setJob] = useState(null);
   const [existing, setExisting] = useState(null);
+  const [linkedQuote, setLinkedQuote] = useState(undefined); // undefined = loading
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const [startingQuote, setStartingQuote] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -462,13 +486,140 @@ export default function JobPage() {
       setJob(jobData);
       const { data: preprod } = await supabase.from('preproduction').select('*').eq('job_id', id).single();
       if (preprod) setExisting(preprod);
+      const { data: quote } = await supabase
+        .from('quotes')
+        .select('id, status, updated_at')
+        .eq('job_id', id)
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      setLinkedQuote(quote || null);
       setLoading(false);
     };
     load();
   }, [id]);
 
-  if (loading) return <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: font, color: '#999' }}>Loading job...</div>;
-  if (notFound) return <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: font, color: '#999' }}>Job not found: {id}</div>;
+  async function startQuote() {
+    setStartingQuote(true);
+    try {
+      const res = await fetch('/api/quotes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          job_id: job.id,
+          customer_name: job.customer_name,
+          address: [job.address, job.city, job.state, job.zip].filter(Boolean).join(', '),
+        }),
+      });
+      const { id: quoteId } = await res.json();
+      router.push(`/quotes/${quoteId}`);
+    } catch {
+      setStartingQuote(false);
+    }
+  }
 
-  return <PreProductionForm job={job} existing={existing} />;
+  if (loading) return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 text-gray-400 text-sm">
+      Loading job…
+    </div>
+  );
+  if (notFound) return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 text-gray-400 text-sm">
+      Job not found: {id}
+    </div>
+  );
+
+  // ── Determine workflow state ─────────────────────────────────────────────
+  const quoteIsDone      = !!job.quote_data;
+  const quoteInProgress  = !quoteIsDone && linkedQuote?.status === 'draft';
+  const quoteNotStarted  = !quoteIsDone && !quoteInProgress;
+  const preProdIsDone    = !!existing;
+
+  // Once the quote is finalized, hand off to the full pre-production form
+  if (quoteIsDone) {
+    return <PreProductionForm job={job} existing={existing} />;
+  }
+
+  // ── Pre-quote workflow hub ───────────────────────────────────────────────
+  const quoteStepStatus  = quoteInProgress ? 'active' : 'active';
+  const preProdStatus    = 'locked';
+  const prodStatus       = 'locked';
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <header className="bg-[#1a2744] text-white px-6 py-4">
+        <div className="max-w-4xl mx-auto flex items-center justify-between">
+          <div>
+            <h1 className="text-xl font-bold tracking-tight">Modern Roof</h1>
+            <p className="text-blue-300 text-xs">Job Details</p>
+          </div>
+          <Link href="/" className="text-blue-300 hover:text-white text-sm transition-colors">
+            ← Dashboard
+          </Link>
+        </div>
+      </header>
+
+      <main className="max-w-4xl mx-auto px-6 py-8">
+        {/* Job info card */}
+        <div className="bg-white border border-gray-200 rounded-xl px-5 py-4 mb-8">
+          <p className="font-bold text-gray-900 text-base">{job.customer_name}</p>
+          <p className="text-sm text-gray-500 mt-0.5">
+            {[job.address, job.city, job.state, job.zip].filter(Boolean).join(', ')}
+          </p>
+          {(job.phone || job.email || job.sales_rep) && (
+            <p className="text-xs text-gray-400 mt-1">
+              {[job.phone, job.email, job.sales_rep ? `Rep: ${job.sales_rep}` : null].filter(Boolean).join(' · ')}
+            </p>
+          )}
+        </div>
+
+        {/* Workflow stepper */}
+        <div className="flex items-center mb-8 px-4">
+          <WorkflowStep n={1} label="Quote" status="active" />
+          <div className="flex-1 h-px bg-gray-200 mx-3" />
+          <WorkflowStep n={2} label="Pre-Production" status="locked" />
+          <div className="flex-1 h-px bg-gray-200 mx-3" />
+          <WorkflowStep n={3} label="Production" status="locked" />
+        </div>
+
+        {/* Step 1 content */}
+        {quoteNotStarted ? (
+          <div className="bg-white border-2 border-blue-200 rounded-2xl p-10 text-center">
+            <div className="w-14 h-14 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg className="w-7 h-7 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+                  d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 11h.01M12 11h.01M15 11h.01M4 19h16a2 2 0 002-2V7a2 2 0 00-2-2H4a2 2 0 00-2 2v10a2 2 0 002 2z" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-bold text-gray-900 mb-2">Build a Quote</h3>
+            <p className="text-sm text-gray-500 mb-6 max-w-sm mx-auto">
+              Upload a Roofr measurement report to generate pricing for {job.customer_name}.
+            </p>
+            <button
+              onClick={startQuote}
+              disabled={startingQuote}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-xl font-semibold transition-colors disabled:opacity-60"
+            >
+              {startingQuote ? 'Starting…' : 'Build Quote →'}
+            </button>
+          </div>
+        ) : (
+          <div className="bg-white border border-gray-200 rounded-xl px-5 py-4 flex items-center justify-between">
+            <div>
+              <p className="font-semibold text-gray-900">Quote in Progress</p>
+              <p className="text-sm text-gray-500 mt-0.5">
+                Last updated {new Date(linkedQuote.updated_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+              </p>
+            </div>
+            <Link
+              href={`/quotes/${linkedQuote.id}`}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl font-semibold text-sm transition-colors"
+            >
+              Continue Quote →
+            </Link>
+          </div>
+        )}
+      </main>
+    </div>
+  );
 }

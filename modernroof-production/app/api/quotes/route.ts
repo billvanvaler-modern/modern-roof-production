@@ -38,6 +38,7 @@ export async function POST(request: Request) {
       measurements: body.measurements ?? null,
       job_details: body.job_details ?? null,
       options: body.options ?? null,
+      job_id: body.job_id ?? null,
       status: "draft",
     })
     .select("id")

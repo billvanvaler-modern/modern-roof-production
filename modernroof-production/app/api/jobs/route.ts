@@ -37,6 +37,27 @@ export async function POST(request: Request) {
     return NextResponse.json(job);
   }
 
+  // ── If this quote was started FROM an existing job, update that job ─────────
+  if (quoteId) {
+    const { data: quoteRow } = await supabase
+      .from("quotes")
+      .select("job_id")
+      .eq("id", quoteId)
+      .maybeSingle();
+
+    if (quoteRow?.job_id) {
+      await supabase
+        .from("jobs")
+        .update({ quote_data: { measurements, jobDetails, options, results } })
+        .eq("id", quoteRow.job_id);
+      await supabase
+        .from("quotes")
+        .update({ status: "sent", updated_at: new Date().toISOString() })
+        .eq("id", quoteId);
+      return NextResponse.json({ jobId: quoteRow.job_id });
+    }
+  }
+
   // Parse city/state/zip out of the address string if present
   // Address format from Roofr: "123 Main St, Indianapolis, IN 46240"
   const addressParts = (measurements?.address ?? "").split(",").map((s: string) => s.trim());
