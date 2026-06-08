@@ -5,9 +5,9 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
 const STATUSES = [
-  { key: 'not_started', label: 'Not Started', pill: 'bg-amber-100 text-amber-800 border-amber-200',  dot: '#92600A' },
-  { key: 'in_process',  label: 'In Process',  pill: 'bg-blue-100  text-blue-800  border-blue-200',   dot: '#1D4ED8' },
-  { key: 'complete',    label: 'Complete',     pill: 'bg-green-100 text-green-800 border-green-200',  dot: '#16A34A' },
+  { key: 'not_started', label: 'Not Started', pill: 'bg-amber-100 text-amber-800 border-amber-200', dot: '#92600A' },
+  { key: 'in_process',  label: 'In Process',  pill: 'bg-blue-100  text-blue-800  border-blue-200',  dot: '#1D4ED8' },
+  { key: 'complete',    label: 'Complete',     pill: 'bg-green-100 text-green-800 border-green-200', dot: '#16A34A' },
 ];
 
 function StatusBadge({ status, jobId, onUpdate }) {
@@ -48,6 +48,11 @@ function StatusBadge({ status, jobId, onUpdate }) {
   );
 }
 
+const EMPTY_FORM = {
+  customer_name: '', address: '', city: '', state: '', zip: '',
+  phone: '', email: '', sales_rep: '',
+};
+
 const FILTER_TABS = [
   { key: 'all',         label: 'All' },
   { key: 'not_started', label: 'Not Started' },
@@ -65,6 +70,12 @@ export default function Home() {
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState('');
   const [dragOver, setDragOver] = useState(false);
+
+  // Add-job form
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [form, setForm] = useState(EMPTY_FORM);
+  const [saving, setSaving] = useState(false);
+  const [formError, setFormError] = useState('');
 
   async function handlePdfFile(file) {
     if (!file || file.type !== 'application/pdf') {
@@ -85,7 +96,6 @@ export default function Home() {
         m.wasteTable?.[wastePct] ??
         Math.round((m.totalAreaSqft / 100) * (1 + wastePct / 100) * 10) / 10;
       const measurements = { ...m, wastePct, squaresWithWaste };
-
       const quoteRes = await fetch('/api/quotes', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -108,14 +118,46 @@ export default function Home() {
       .from('jobs')
       .select('*, preproduction(id, submitted_at)')
       .order('created_at', { ascending: false })
-      .then(({ data }) => {
-        setJobs(data || []);
-        setLoading(false);
-      });
+      .then(({ data }) => { setJobs(data || []); setLoading(false); });
   }, []);
 
   const updateStatus = (jobId, newStatus) =>
     setJobs(prev => prev.map(j => j.id === jobId ? { ...j, status: newStatus } : j));
+
+  async function addJob(e) {
+    e.preventDefault();
+    if (!form.customer_name.trim()) { setFormError('Customer name is required.'); return; }
+    setSaving(true);
+    setFormError('');
+    const { data, error } = await supabase
+      .from('jobs')
+      .insert({
+        customer_name: form.customer_name.trim() || null,
+        address:       form.address.trim()       || null,
+        city:          form.city.trim()           || null,
+        state:         form.state.trim()          || null,
+        zip:           form.zip.trim()            || null,
+        phone:         form.phone.trim()          || null,
+        email:         form.email.trim()          || null,
+        sales_rep:     form.sales_rep.trim()      || null,
+        status:        'not_started',
+      })
+      .select('*, preproduction(id, submitted_at)')
+      .single();
+    setSaving(false);
+    if (error) { setFormError('Save failed: ' + error.message); return; }
+    setJobs(prev => [data, ...prev]);
+    setForm(EMPTY_FORM);
+    setShowAddForm(false);
+  }
+
+  function cancelAdd() {
+    setShowAddForm(false);
+    setForm(EMPTY_FORM);
+    setFormError('');
+  }
+
+  const setF = (key, val) => setForm(prev => ({ ...prev, [key]: val }));
 
   const filtered = jobs.filter(j => {
     const q = search.toLowerCase();
@@ -145,16 +187,19 @@ export default function Home() {
             <p className="text-blue-300 text-xs">Pre-Production</p>
           </div>
           <div className="flex items-center gap-3">
+            <button
+              onClick={() => { setShowAddForm(v => !v); setFormError(''); }}
+              className="text-blue-300 hover:text-white text-sm font-medium transition-colors border border-blue-400/40 hover:border-white/40 px-3 py-1.5 rounded-lg"
+            >
+              + Add Job
+            </button>
             <Link
               href="/quote"
               className="bg-amber-400 hover:bg-amber-300 text-gray-900 text-sm font-semibold px-4 py-2 rounded-lg transition-colors"
             >
               + New Quote
             </Link>
-            <Link
-              href="/admin"
-              className="text-blue-300 hover:text-white text-sm transition-colors"
-            >
+            <Link href="/admin" className="text-blue-300 hover:text-white text-sm transition-colors">
               Admin
             </Link>
           </div>
@@ -162,6 +207,138 @@ export default function Home() {
       </header>
 
       <main className="max-w-4xl mx-auto px-6 py-8">
+
+        {/* ── Add Job Form ── */}
+        {showAddForm && (
+          <form
+            onSubmit={addJob}
+            className="bg-white border-2 border-blue-200 rounded-2xl p-6 mb-6 shadow-sm"
+          >
+            <h3 className="text-sm font-bold uppercase tracking-wide text-blue-600 mb-4">
+              Add Job Manually
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+              <div className="sm:col-span-2">
+                <label className="block text-xs font-semibold text-gray-600 mb-1">
+                  Customer Name <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={form.customer_name}
+                  onChange={e => setF('customer_name', e.target.value)}
+                  placeholder="e.g. John & Jane Smith"
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  autoFocus
+                />
+              </div>
+
+              <div className="sm:col-span-2">
+                <label className="block text-xs font-semibold text-gray-600 mb-1">Street Address</label>
+                <input
+                  type="text"
+                  value={form.address}
+                  onChange={e => setF('address', e.target.value)}
+                  placeholder="e.g. 123 Main St"
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">City</label>
+                <input
+                  type="text"
+                  value={form.city}
+                  onChange={e => setF('city', e.target.value)}
+                  placeholder="Indianapolis"
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1">State</label>
+                  <input
+                    type="text"
+                    value={form.state}
+                    onChange={e => setF('state', e.target.value)}
+                    placeholder="IN"
+                    maxLength={2}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1">Zip</label>
+                  <input
+                    type="text"
+                    value={form.zip}
+                    onChange={e => setF('zip', e.target.value)}
+                    placeholder="46240"
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">Phone</label>
+                <input
+                  type="tel"
+                  value={form.phone}
+                  onChange={e => setF('phone', e.target.value)}
+                  placeholder="(317) 555-1234"
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">Email</label>
+                <input
+                  type="email"
+                  value={form.email}
+                  onChange={e => setF('email', e.target.value)}
+                  placeholder="customer@email.com"
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">Sales Rep</label>
+                <input
+                  type="text"
+                  value={form.sales_rep}
+                  onChange={e => setF('sales_rep', e.target.value)}
+                  placeholder="Rep name"
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+
+            {formError && (
+              <p className="text-xs text-red-500 mb-3">{formError}</p>
+            )}
+
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={cancelAdd}
+                className="px-5 py-2.5 border border-gray-200 rounded-xl text-gray-600 hover:bg-gray-50 font-medium text-sm"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={saving || !form.customer_name.trim()}
+                className={`px-5 py-2.5 rounded-xl font-semibold text-sm transition-colors ${
+                  !saving && form.customer_name.trim()
+                    ? 'bg-blue-600 text-white hover:bg-blue-700'
+                    : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                }`}
+              >
+                {saving ? 'Saving…' : 'Add Job'}
+              </button>
+            </div>
+          </form>
+        )}
+
         {/* ── PDF Drop Zone ── */}
         <input
           ref={fileInputRef}
@@ -229,7 +406,15 @@ export default function Home() {
         {loading ? (
           <div className="text-center py-16 text-gray-400 text-sm">Loading jobs…</div>
         ) : filtered.length === 0 ? (
-          <div className="text-center py-16 text-gray-400 text-sm">No jobs found</div>
+          <div className="text-center py-16 text-gray-400">
+            <p className="text-sm mb-3">No jobs yet</p>
+            <button
+              onClick={() => setShowAddForm(true)}
+              className="text-xs text-blue-500 hover:text-blue-700 underline underline-offset-2"
+            >
+              + Add your first job manually
+            </button>
+          </div>
         ) : (
           <div className="space-y-2">
             {filtered.map(job => {
