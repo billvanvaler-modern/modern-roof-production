@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import type { QuoteResult, Measurements, QuoteOptions, ShingleProduct } from "@/lib/types";
+import { useState, Fragment } from "react";
+import type { QuoteResult, MaterialAuditLine, Measurements, QuoteOptions, ShingleProduct } from "@/lib/types";
 
 export interface ProductQuote {
   product: ShingleProduct;
@@ -535,6 +535,11 @@ function ProductCard({
           </section>
 
           {/* Upgrades */}
+          {/* Calculation Audit — internal use only, never prints */}
+          {result.materialAudit && result.materialAudit.length > 0 && (
+            <AuditSection audit={result.materialAudit} />
+          )}
+
           {result.upgradeBreakdown.total > 0 && (
             <section>
               <h4 className="text-sm font-bold uppercase tracking-wide text-gray-500 mb-3">
@@ -606,6 +611,56 @@ function ProductCard({
         </div>
       )}
     </div>
+  );
+}
+
+function AuditSection({ audit }: { audit: MaterialAuditLine[] }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <section className="print:hidden">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex items-center gap-2 text-xs font-semibold text-gray-400 hover:text-gray-600 transition-colors mb-2"
+      >
+        <span className="text-base leading-none">{open ? "▾" : "▸"}</span>
+        {open ? "Hide" : "Show"} calculation details
+      </button>
+
+      {open && (
+        <div className="border border-amber-100 bg-amber-50 rounded-xl overflow-hidden">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="bg-amber-100 text-amber-700 uppercase tracking-wide">
+                <th className="text-left px-3 py-2">Item</th>
+                <th className="text-left px-3 py-2">Measurements used</th>
+                <th className="text-center px-3 py-2">Coverage rate</th>
+                <th className="text-center px-3 py-2">Math</th>
+                <th className="text-right px-3 py-2">Ordered</th>
+              </tr>
+            </thead>
+            <tbody>
+              {audit.map((row, i) => (
+                <Fragment key={i}>
+                  <tr className={`border-t border-amber-100 ${i % 2 === 0 ? "" : "bg-white/40"}`}>
+                    <td className="px-3 py-2 font-semibold text-amber-900">{row.item}</td>
+                    <td className="px-3 py-2 text-amber-800">{row.inputs}</td>
+                    <td className="px-3 py-2 text-center text-amber-700">{row.coverage}</td>
+                    <td className="px-3 py-2 text-center text-amber-700 font-mono">{row.rawQty}</td>
+                    <td className="px-3 py-2 text-right font-bold text-amber-900">
+                      {row.ordered} {row.unit}
+                    </td>
+                  </tr>
+                </Fragment>
+              ))}
+            </tbody>
+          </table>
+          <p className="text-xs text-amber-600 px-3 py-2 border-t border-amber-100">
+            All quantities are rounded up to the next whole unit.
+          </p>
+        </div>
+      )}
+    </section>
   );
 }
 

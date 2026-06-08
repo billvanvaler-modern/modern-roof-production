@@ -19,6 +19,10 @@ const EMPTY_PRODUCT: Omit<ShingleProduct, "id"> = {
   iceWaterCostPerRoll: 0,
   ridgeVentCostPer4ft: 0,
   pipeJackCost: 0,
+  hipRidgeLfPerBundle: 31,
+  starterLfPerBundle: 114,
+  underlaymentSqPerRoll: 10,
+  iceWaterLfPerRoll: 66,
 };
 
 function generateId(name: string, distributor: string): string {
@@ -231,6 +235,17 @@ export default function SettingsPage() {
               <NumField label="Ice & Water / Roll ($)" value={form.iceWaterCostPerRoll} onChange={(v) => setField("iceWaterCostPerRoll", v)} />
               <NumField label="Ridge Vent / 4 ft ($)" value={form.ridgeVentCostPer4ft} onChange={(v) => setField("ridgeVentCostPer4ft", v)} />
               <NumField label="Pipe Jack Cost ($)" value={form.pipeJackCost} onChange={(v) => setField("pipeJackCost", v)} />
+            </div>
+
+            <h4 className="text-xs font-bold uppercase tracking-wide text-blue-600 mb-3 mt-2">
+              Coverage Rates
+            </h4>
+            <p className="text-xs text-gray-400 mb-3">How much area or length each unit of this product covers — used to calculate quantities.</p>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+              <NumField label="Hip & Ridge LF/Bundle" value={form.hipRidgeLfPerBundle ?? 31} onChange={(v) => setField("hipRidgeLfPerBundle", v)} step="1" />
+              <NumField label="Starter LF/Bundle" value={form.starterLfPerBundle ?? 114} onChange={(v) => setField("starterLfPerBundle", v)} step="1" />
+              <NumField label="Underlayment Sq/Roll" value={form.underlaymentSqPerRoll ?? 10} onChange={(v) => setField("underlaymentSqPerRoll", v)} step="0.1" />
+              <NumField label="Ice & Water LF/Roll" value={form.iceWaterLfPerRoll ?? 66} onChange={(v) => setField("iceWaterLfPerRoll", v)} step="1" />
             </div>
 
             <h4 className="text-xs font-bold uppercase tracking-wide text-blue-600 mb-3">

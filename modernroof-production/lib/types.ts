@@ -15,7 +15,21 @@ export interface ShingleProduct {
   iceWaterCostPerRoll: number;
   ridgeVentCostPer4ft: number;
   pipeJackCost: number;
+  // Coverage rates — how much each unit covers
+  hipRidgeLfPerBundle: number;    // linear feet per bundle (e.g. 31)
+  starterLfPerBundle: number;     // linear feet per bundle (e.g. 114)
+  underlaymentSqPerRoll: number;  // squares per roll (e.g. 10)
+  iceWaterLfPerRoll: number;      // linear feet per roll (e.g. 66)
   sortOrder?: number;
+}
+
+export interface MaterialAuditLine {
+  item: string;       // "Hip & Ridge"
+  inputs: string;     // "191.67 lf hips + 91.17 lf ridges = 282.84 lf"
+  coverage: string;   // "31 lf / bundle"
+  rawQty: string;     // "282.84 ÷ 31 = 9.12"
+  ordered: number;    // 10  (rounded up)
+  unit: string;       // "bundles"
 }
 
 export interface ParsedMeasurements {
@@ -127,6 +141,7 @@ export interface QuoteResult {
   upgradeBreakdown: UpgradeBreakdown;
   totalWithUpgrades: number;
   commission: number;
+  materialAudit: MaterialAuditLine[];
 }
 
 export interface WizardState {

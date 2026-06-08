@@ -4,6 +4,7 @@ import type {
   QuoteOptions,
   QuoteResult,
   MaterialLineItem,
+  MaterialAuditLine,
   LaborLineItem,
   ShingleProduct,
 } from "./types";
@@ -43,6 +44,35 @@ function line(name: string, qty: number, unitCost: number): MaterialLineItem {
 
 function laborLine(name: string, qty: number, rate: number): LaborLineItem {
   return { name, qty, rate, total: qty * rate };
+}
+
+function fmt(n: number): string {
+  return Number.isInteger(n) ? String(n) : n.toFixed(2).replace(/\.?0+$/, "");
+}
+
+function auditLine(
+  item: string,
+  inputParts: { label: string; value: number; unitLabel: string }[],
+  coverageRate: number,
+  coverageUnit: string,
+  ordered: number,
+  orderedUnit: string
+): MaterialAuditLine {
+  const total = inputParts.reduce((s, p) => s + p.value, 0);
+  const inputs =
+    inputParts.length === 1
+      ? `${fmt(inputParts[0].value)} ${inputParts[0].unitLabel}`
+      : inputParts.map((p) => `${fmt(p.value)} lf ${p.label}`).join(" + ") +
+        ` = ${fmt(total)} ${inputParts[0].unitLabel}`;
+  const raw = `${fmt(total)} ÷ ${fmt(coverageRate)} = ${fmt(total / coverageRate)}`;
+  return {
+    item,
+    inputs,
+    coverage: `${fmt(coverageRate)} ${coverageUnit}`,
+    rawQty: raw,
+    ordered,
+    unit: orderedUnit,
+  };
 }
 
 export function calculateQuote(
@@ -86,19 +116,99 @@ export function calculateQuote(
     customLaborCost,
   } = jobDetails;
 
+  // ─── Coverage rates (per-product, fallback to global defaults) ────────────
+
+  const hipRidgeLfPerBundle = product.hipRidgeLfPerBundle ?? HIP_RIDGE_LF_PER_BUNDLE;
+  const starterLfPerBundle = product.starterLfPerBundle ?? STARTER_LF_PER_BUNDLE;
+  const underlaymentSqPerRoll = product.underlaymentSqPerRoll ?? UNDERLAYMENT_SQ_PER_ROLL;
+  const iceWaterLfPerRoll = product.iceWaterLfPerRoll ?? ICE_WATER_LF_PER_ROLL;
+
   // ─── Material Quantities ───────────────────────────────────────────────────
 
   const shingleBundles = roundUp(sq * product.bundlesPerSquare);
-  const hipRidgeBundles = roundUp((ridges + hips) / HIP_RIDGE_LF_PER_BUNDLE);
-  const starterBundles = roundUp((rakes + eaves) / STARTER_LF_PER_BUNDLE);
-  const underlaymentRolls = roundUp(
-    (sq + area4_12) / UNDERLAYMENT_SQ_PER_ROLL
-  );
+  const hipRidgeBundles = roundUp((ridges + hips) / hipRidgeLfPerBundle);
+  const starterBundles = roundUp((rakes + eaves) / starterLfPerBundle);
+  const underlaymentRolls = roundUp((sq + area4_12) / underlaymentSqPerRoll);
   const dripEdgePieces = roundUp(rakes / 10 + 2);
   const gutterApronPieces = roundUp(eaves / 10 + 2);
   const iceWaterRolls = roundUp(
-    (valleys + eaves + wallFlashing + stepFlashing) / ICE_WATER_LF_PER_ROLL
+    (valleys + eaves + wallFlashing + stepFlashing) / iceWaterLfPerRoll
   );
+
+  // ─── Calculation Audit ────────────────────────────────────────────────────
+
+  const materialAudit: MaterialAuditLine[] = [
+    auditLine(
+      "Shingles",
+      [{ label: "squares w/ waste", value: sq, unitLabel: "sq" }],
+      1 / product.bundlesPerSquare,
+      "sq/bundle",
+      shingleBundles,
+      "bundles"
+    ),
+    auditLine(
+      "Hip & Ridge",
+      [
+        { label: "hips", value: hips, unitLabel: "lf" },
+        { label: "ridges", value: ridges, unitLabel: "lf" },
+      ],
+      hipRidgeLfPerBundle,
+      "lf / bundle",
+      hipRidgeBundles,
+      "bundles"
+    ),
+    auditLine(
+      "Starter",
+      [
+        { label: "eaves", value: eaves, unitLabel: "lf" },
+        { label: "rakes", value: rakes, unitLabel: "lf" },
+      ],
+      starterLfPerBundle,
+      "lf / bundle",
+      starterBundles,
+      "bundles"
+    ),
+    auditLine(
+      "Underlayment",
+      [
+        { label: "squares", value: sq, unitLabel: "sq" },
+        { label: "double-felt area", value: area4_12, unitLabel: "sq" },
+      ],
+      underlaymentSqPerRoll,
+      "sq / roll",
+      underlaymentRolls,
+      "rolls"
+    ),
+    auditLine(
+      "Ice & Water Shield",
+      [
+        { label: "valleys", value: valleys, unitLabel: "lf" },
+        { label: "eaves", value: eaves, unitLabel: "lf" },
+        { label: "wall flashing", value: wallFlashing, unitLabel: "lf" },
+        { label: "step flashing", value: stepFlashing, unitLabel: "lf" },
+      ],
+      iceWaterLfPerRoll,
+      "lf / roll",
+      iceWaterRolls,
+      "rolls"
+    ),
+    auditLine(
+      "Drip Edge (10' pieces)",
+      [{ label: "rakes", value: rakes, unitLabel: "lf" }],
+      10,
+      "lf / piece",
+      dripEdgePieces,
+      "pieces"
+    ),
+    auditLine(
+      "Gutter Apron (10' pieces)",
+      [{ label: "eaves", value: eaves, unitLabel: "lf" }],
+      10,
+      "lf / piece",
+      gutterApronPieces,
+      "pieces"
+    ),
+  ];
 
   const ridgeVentPieces =
     ventilation === "Ridge Vent" ? roundUp((ridges - 4) / 4) : 0;
@@ -331,5 +441,6 @@ export function calculateQuote(
     },
     totalWithUpgrades,
     commission,
+    materialAudit,
   };
 }

@@ -21,6 +21,10 @@ interface ProductRow {
   ice_water_cost_per_roll: number;
   ridge_vent_cost_per_4ft: number;
   pipe_jack_cost: number;
+  hip_ridge_lf_per_bundle: number;
+  starter_lf_per_bundle: number;
+  underlayment_sq_per_roll: number;
+  ice_water_lf_per_roll: number;
   sort_order: number;
 }
 
@@ -40,6 +44,10 @@ function fromRow(row: ProductRow): ShingleProduct {
     iceWaterCostPerRoll: row.ice_water_cost_per_roll,
     ridgeVentCostPer4ft: row.ridge_vent_cost_per_4ft,
     pipeJackCost: row.pipe_jack_cost,
+    hipRidgeLfPerBundle: row.hip_ridge_lf_per_bundle ?? 31,
+    starterLfPerBundle: row.starter_lf_per_bundle ?? 114,
+    underlaymentSqPerRoll: row.underlayment_sq_per_roll ?? 10,
+    iceWaterLfPerRoll: row.ice_water_lf_per_roll ?? 66,
     sortOrder: row.sort_order ?? 0,
   };
 }
@@ -60,6 +68,10 @@ function toRow(p: ShingleProduct, index?: number): Omit<ProductRow, never> {
     ice_water_cost_per_roll: p.iceWaterCostPerRoll,
     ridge_vent_cost_per_4ft: p.ridgeVentCostPer4ft,
     pipe_jack_cost: p.pipeJackCost,
+    hip_ridge_lf_per_bundle: p.hipRidgeLfPerBundle ?? 31,
+    starter_lf_per_bundle: p.starterLfPerBundle ?? 114,
+    underlayment_sq_per_roll: p.underlaymentSqPerRoll ?? 10,
+    ice_water_lf_per_roll: p.iceWaterLfPerRoll ?? 66,
     sort_order: index !== undefined ? index : (p.sortOrder ?? 0),
   };
 }
