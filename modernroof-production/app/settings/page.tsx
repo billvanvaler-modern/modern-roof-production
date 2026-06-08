@@ -204,14 +204,15 @@ export default function SettingsPage() {
                   className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </Field>
-              <Field label="Description" className="sm:col-span-2">
+              <Field label="Description / Features & Benefits" className="sm:col-span-2">
                 <textarea
                   value={form.description}
                   onChange={(e) => setField("description", e.target.value)}
-                  rows={2}
-                  placeholder="Short product description shown in Step 4"
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                  rows={6}
+                  placeholder={"e.g.\n• 130 mph wind resistance\n• Class 4 impact rating\n• Lifetime limited warranty\n• Available in 12 colors"}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y"
                 />
+                <p className="text-xs text-gray-400 mt-1">Use bullet points (•) to list features. This text appears on the customer-facing quote PDF.</p>
               </Field>
             </div>
 
@@ -314,7 +315,7 @@ export default function SettingsPage() {
                                 </span>
                               )}
                             </div>
-                            <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">{product.description}</p>
+                            <p className="text-xs text-gray-500 mt-0.5 whitespace-pre-line">{product.description}</p>
                             <div className="flex flex-wrap gap-x-4 gap-y-0.5 mt-2">
                               <Stat label="Shingles" value={`$${product.costPerBundle}/bundle`} />
                               <Stat label="Bundles/sq" value={product.bundlesPerSquare} />
