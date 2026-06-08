@@ -4,9 +4,10 @@ import type {
   QuoteOptions,
   QuoteResult,
   MaterialLineItem,
-  MaterialAuditLine,
   LaborLineItem,
   ShingleProduct,
+  AuditGroup,
+  AuditRow,
 } from "./types";
 import {
   HIP_RIDGE_LF_PER_BUNDLE,
@@ -46,33 +47,19 @@ function laborLine(name: string, qty: number, rate: number): LaborLineItem {
   return { name, qty, rate, total: qty * rate };
 }
 
+/** Format a plain number — show integers as integers, decimals to 2 dp (trim trailing zeros) */
 function fmt(n: number): string {
   return Number.isInteger(n) ? String(n) : n.toFixed(2).replace(/\.?0+$/, "");
 }
 
-function auditLine(
-  item: string,
-  inputParts: { label: string; value: number; unitLabel: string }[],
-  coverageRate: number,
-  coverageUnit: string,
-  ordered: number,
-  orderedUnit: string
-): MaterialAuditLine {
-  const total = inputParts.reduce((s, p) => s + p.value, 0);
-  const inputs =
-    inputParts.length === 1
-      ? `${fmt(inputParts[0].value)} ${inputParts[0].unitLabel}`
-      : inputParts.map((p) => `${fmt(p.value)} lf ${p.label}`).join(" + ") +
-        ` = ${fmt(total)} ${inputParts[0].unitLabel}`;
-  const raw = `${fmt(total)} ÷ ${fmt(coverageRate)} = ${fmt(total / coverageRate)}`;
-  return {
-    item,
-    inputs,
-    coverage: `${fmt(coverageRate)} ${coverageUnit}`,
-    rawQty: raw,
-    ordered,
-    unit: orderedUnit,
-  };
+/** Format as currency — always 2 decimal places with $ prefix */
+function fmtM(n: number): string {
+  return "$" + n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+}
+
+/** Build a single AuditRow */
+function row(label: string, formula: string, result: string): AuditRow {
+  return { label, formula, result };
 }
 
 export function calculateQuote(
@@ -134,81 +121,6 @@ export function calculateQuote(
   const iceWaterRolls = roundUp(
     (valleys + eaves + wallFlashing + stepFlashing) / iceWaterLfPerRoll
   );
-
-  // ─── Calculation Audit ────────────────────────────────────────────────────
-
-  const materialAudit: MaterialAuditLine[] = [
-    auditLine(
-      "Shingles",
-      [{ label: "squares w/ waste", value: sq, unitLabel: "sq" }],
-      1 / product.bundlesPerSquare,
-      "sq/bundle",
-      shingleBundles,
-      "bundles"
-    ),
-    auditLine(
-      "Hip & Ridge",
-      [
-        { label: "hips", value: hips, unitLabel: "lf" },
-        { label: "ridges", value: ridges, unitLabel: "lf" },
-      ],
-      hipRidgeLfPerBundle,
-      "lf / bundle",
-      hipRidgeBundles,
-      "bundles"
-    ),
-    auditLine(
-      "Starter",
-      [
-        { label: "eaves", value: eaves, unitLabel: "lf" },
-        { label: "rakes", value: rakes, unitLabel: "lf" },
-      ],
-      starterLfPerBundle,
-      "lf / bundle",
-      starterBundles,
-      "bundles"
-    ),
-    auditLine(
-      "Underlayment",
-      [
-        { label: "squares", value: sq, unitLabel: "sq" },
-        { label: "double-felt area", value: area4_12, unitLabel: "sq" },
-      ],
-      underlaymentSqPerRoll,
-      "sq / roll",
-      underlaymentRolls,
-      "rolls"
-    ),
-    auditLine(
-      "Ice & Water Shield",
-      [
-        { label: "valleys", value: valleys, unitLabel: "lf" },
-        { label: "eaves", value: eaves, unitLabel: "lf" },
-        { label: "wall flashing", value: wallFlashing, unitLabel: "lf" },
-        { label: "step flashing", value: stepFlashing, unitLabel: "lf" },
-      ],
-      iceWaterLfPerRoll,
-      "lf / roll",
-      iceWaterRolls,
-      "rolls"
-    ),
-    auditLine(
-      "Drip Edge (10' pieces)",
-      [{ label: "rakes", value: rakes, unitLabel: "lf" }],
-      10,
-      "lf / piece",
-      dripEdgePieces,
-      "pieces"
-    ),
-    auditLine(
-      "Gutter Apron (10' pieces)",
-      [{ label: "eaves", value: eaves, unitLabel: "lf" }],
-      10,
-      "lf / piece",
-      gutterApronPieces,
-      "pieces"
-    ),
-  ];
 
   const ridgeVentPieces =
     ventilation === "Ridge Vent" ? roundUp((ridges - 4) / 4) : 0;
@@ -421,6 +333,196 @@ export function calculateQuote(
   const totalWithUpgrades = retailPrice + upgradeTotal;
   const commission = COMMISSION_RATE * totalWithUpgrades;
 
+  // ─── Full Calculation Audit ───────────────────────────────────────────────
+
+  const inputRows: AuditRow[] = [
+    row("Squares with waste", `${fmt(measurements.squaresWithWaste)} sq (waste % applied)`, `${fmt(sq)} sq`),
+    row("Eaves", "from Roofr report", `${fmt(eaves)} lf`),
+    row("Rakes", "from Roofr report", `${fmt(rakes)} lf`),
+    row("Ridges", "from Roofr report", `${fmt(ridges)} lf`),
+    row("Hips", "from Roofr report", `${fmt(hips)} lf`),
+    row("Valleys", "from Roofr report", `${fmt(valleys)} lf`),
+  ];
+  if (stepFlashing > 0)
+    inputRows.push(row("Step Flashing", "from Roofr report", `${fmt(stepFlashing)} lf`));
+  if (wallFlashing > 0)
+    inputRows.push(row("Wall Flashing", "from Roofr report", `${fmt(wallFlashing)} lf`));
+  if (area4_12 > 0)
+    inputRows.push(row("Area ≤4/12 pitch", "job details", `${fmt(area4_12)} sq`));
+  if (area8_12 > 0)
+    inputRows.push(row("Area 8/12–9/12", "job details", `${fmt(area8_12)} sq`));
+  if (area10_12 > 0)
+    inputRows.push(row("Area 10/12–11/12", "job details", `${fmt(area10_12)} sq`));
+  if (area12_12 > 0)
+    inputRows.push(row("Area 12/12+", "job details", `${fmt(area12_12)} sq`));
+  if (area2Story > 0)
+    inputRows.push(row("2-Story area", "job details", `${fmt(area2Story)} sq`));
+  if (area2Layers > 0)
+    inputRows.push(row("2-Layer tear-off area", "job details", `${fmt(area2Layers)} sq`));
+  if (pipeJacks > 0)
+    inputRows.push(row("Pipe jacks", "job details", `${pipeJacks}`));
+  if (boxVents > 0)
+    inputRows.push(row("Box vents", "job details", `${boxVents}`));
+  if (osbSheets > 0)
+    inputRows.push(row("OSB sheets", "job details", `${osbSheets}`));
+  if (chimneySmall + chimneyMedium + chimneyLarge > 0)
+    inputRows.push(row("Chimneys", "job details", `${chimneySmall} small, ${chimneyMedium} medium, ${chimneyLarge} large`));
+  if (skylightReplace + skylightReFlash > 0)
+    inputRows.push(row("Skylights", "job details", `${skylightReplace} replace, ${skylightReFlash} re-flash`));
+  inputRows.push(row("Product", product.manufacturer, product.name));
+  inputRows.push(row("Profit margin", "quote settings", `${(profitMargin * 100).toFixed(0)}%`));
+
+  const qtyRows: AuditRow[] = [
+    row(
+      "Shingles",
+      `${fmt(sq)} sq × ${product.bundlesPerSquare} bundles/sq = ${fmt(sq * product.bundlesPerSquare)} → ceil`,
+      `${shingleBundles} bundles`
+    ),
+    row(
+      "Hip & Ridge",
+      `(${fmt(hips)} hips + ${fmt(ridges)} ridges) = ${fmt(hips + ridges)} lf ÷ ${hipRidgeLfPerBundle} lf/bundle = ${fmt((hips + ridges) / hipRidgeLfPerBundle)} → ceil`,
+      `${hipRidgeBundles} bundles`
+    ),
+    row(
+      "Starter",
+      `(${fmt(eaves)} eaves + ${fmt(rakes)} rakes) = ${fmt(eaves + rakes)} lf ÷ ${starterLfPerBundle} lf/bundle = ${fmt((eaves + rakes) / starterLfPerBundle)} → ceil`,
+      `${starterBundles} bundles`
+    ),
+    row(
+      "Underlayment",
+      `(${fmt(sq)} sq + ${fmt(area4_12)} double-felt sq) = ${fmt(sq + area4_12)} sq ÷ ${underlaymentSqPerRoll} sq/roll = ${fmt((sq + area4_12) / underlaymentSqPerRoll)} → ceil`,
+      `${underlaymentRolls} rolls`
+    ),
+    row(
+      "Ice & Water Shield",
+      `(${fmt(valleys)} valleys + ${fmt(eaves)} eaves + ${fmt(wallFlashing)} wall + ${fmt(stepFlashing)} step) = ${fmt(valleys + eaves + wallFlashing + stepFlashing)} lf ÷ ${iceWaterLfPerRoll} lf/roll = ${fmt((valleys + eaves + wallFlashing + stepFlashing) / iceWaterLfPerRoll)} → ceil`,
+      `${iceWaterRolls} rolls`
+    ),
+    row(
+      "Drip Edge (10' pieces)",
+      `${fmt(rakes)} rakes ÷ 10 + 2 buffer = ${fmt(rakes / 10 + 2)} → ceil`,
+      `${dripEdgePieces} pieces`
+    ),
+    row(
+      "Gutter Apron (10' pieces)",
+      `${fmt(eaves)} eaves ÷ 10 + 2 buffer = ${fmt(eaves / 10 + 2)} → ceil`,
+      `${gutterApronPieces} pieces`
+    ),
+    row(
+      "Coil Nails",
+      `${fmt(sq)} sq ÷ 17 sq/box = ${fmt(sq / 17)} → ceil`,
+      `${coilNailBoxes} boxes`
+    ),
+    row(
+      "Cap Nails",
+      `${fmt(sq)} sq ÷ 17 sq/box = ${fmt(sq / 17)} → ceil`,
+      `${capNailBoxes} boxes`
+    ),
+  ];
+
+  if (ventilation === "Ridge Vent") {
+    qtyRows.push(row(
+      "Ridge Vent (4' pieces)",
+      `(${fmt(ridges)} ridges − 4 ft) ÷ 4 ft/piece = ${fmt((ridges - 4) / 4)} → ceil`,
+      `${ridgeVentPieces} pieces`
+    ));
+  } else if (ventilation === "Box Vents") {
+    qtyRows.push(row("Box Vents", "from job details", `${boxVentCount} vents`));
+  } else if (ventilation === "Box to Ridge Conversion") {
+    qtyRows.push(row("Quarrix Plugs (box-to-ridge)", "1 plug per existing box vent", `${quarrixPlugs} plugs`));
+  }
+
+  if (pipeJacks > 0)
+    qtyRows.push(row("Pipe Jacks", "from job details", `${pipeJacks} jacks`));
+  if (trimCoilRolls > 0) {
+    qtyRows.push(row("Trim Coil", `${chimneySmall} small + ${chimneyMedium} medium + ${chimneyLarge} large chimneys`, `${trimCoilRolls} rolls`));
+    qtyRows.push(row("Sealant", `1 tube per chimney = ${trimCoilRolls} chimneys`, `${sealantTubes} tubes`));
+  }
+  if (stepFlashingBundles > 0)
+    qtyRows.push(row(
+      "Step Flashing",
+      `${fmt(stepFlashing)} lf ÷ ${STEP_FLASHING_LF_PER_BUNDLE} lf/bundle = ${fmt(stepFlashing / STEP_FLASHING_LF_PER_BUNDLE)} → ceil`,
+      `${stepFlashingBundles} bundles`
+    ));
+  if (osbSheets > 0)
+    qtyRows.push(row("OSB Sheathing", "from job details", `${osbSheets} sheets`));
+  if (furnaceVents > 0)
+    qtyRows.push(row("Furnace Vent Flashing", "from job details", `${furnaceVents} vents`));
+  if (totalCrickets > 0)
+    qtyRows.push(row("Cricket Material", `${cricketSmall} small + ${cricketMedium} medium + ${cricketLarge} large`, `${totalCrickets} crickets`));
+  qtyRows.push(row("Delivery", "flat rate", "1"));
+  qtyRows.push(row("Silicone", "standard 2 tubes", "2 tubes"));
+
+  const costRows: AuditRow[] = materialItems.map((item) =>
+    row(item.name, `${item.qty} × ${fmtM(item.unitCost)}`, fmtM(item.total))
+  );
+  costRows.push(row("Material Subtotal", "", fmtM(materialSubtotal)));
+  if (otherCost > 0)
+    costRows.push(row("Extra Material Costs", "no tax applied yet", fmtM(otherCost)));
+  costRows.push(row(
+    "Sales Tax (7%)",
+    `(${fmtM(materialSubtotal)} + ${fmtM(otherCost)}) × ${(MATERIAL_TAX_RATE * 100).toFixed(0)}%`,
+    fmtM((materialSubtotal + otherCost) * MATERIAL_TAX_RATE)
+  ));
+  costRows.push(row("Materials Total (with tax)", "", fmtM(materialWithTax)));
+
+  const laborRows: AuditRow[] = laborItems.map((item) =>
+    row(
+      item.name,
+      item.qty === 1
+        ? `flat rate`
+        : `${fmt(item.qty)} × ${fmtM(item.rate)}`,
+      fmtM(item.total)
+    )
+  );
+  laborRows.push(row("Labor Total", "", fmtM(laborTotal)));
+
+  const pricingRows: AuditRow[] = [
+    row("Materials (with tax)", "", fmtM(materialWithTax)),
+    row("Labor", "", fmtM(laborTotal)),
+    row("Total Cost", `${fmtM(materialWithTax)} + ${fmtM(laborTotal)}`, fmtM(totalCost)),
+    row(
+      "Retail Price",
+      `${fmtM(totalCost)} ÷ (1 − ${(profitMargin * 100).toFixed(0)}% margin)`,
+      fmtM(retailPrice)
+    ),
+    row(
+      "Price per Square",
+      `${fmtM(retailPrice)} ÷ ${fmt(sq)} sq`,
+      fmtM(perSquarePrice)
+    ),
+  ];
+  if (upgradeTotal > 0) {
+    if (pipebootsPrice > 0)
+      pricingRows.push(row("Upgrade: Pipeboots", `${pipeJacks} × ${fmtM(UPGRADE_PRICE.pipeboots)}`, fmtM(pipebootsPrice)));
+    if (warrantyPrice > 0)
+      pricingRows.push(row("Upgrade: Warranty", `${fmt(sq)} sq × ${fmtM(UPGRADE_PRICE.warrantyPerSq)}/sq`, fmtM(warrantyPrice)));
+    if (guttersPrice > 0)
+      pricingRows.push(row("Upgrade: Gutters", `${totalGutterFeet} lf × ${fmtM(UPGRADE_PRICE.guttersPerFt)}/lf`, fmtM(guttersPrice)));
+    if (gutterGuardsPrice > 0)
+      pricingRows.push(row("Upgrade: Gutter Guards", `${totalGutterFeet} lf × ${fmtM(UPGRADE_PRICE.gutterGuardsPerFt)}/lf`, fmtM(gutterGuardsPrice)));
+    if (boxToRidgePrice > 0)
+      pricingRows.push(row(
+        "Upgrade: Box-to-Ridge",
+        `${fmt(ridges)} lf × ${fmtM(UPGRADE_PRICE.newRidgePerFt)} + ${boxVents} plugs × ${fmtM(UPGRADE_PRICE.plugOldBox)}`,
+        fmtM(boxToRidgePrice)
+      ));
+    pricingRows.push(row("Total with Upgrades", `${fmtM(retailPrice)} + ${fmtM(upgradeTotal)}`, fmtM(totalWithUpgrades)));
+  }
+  pricingRows.push(row(
+    "Commission",
+    `${fmtM(totalWithUpgrades)} × ${(COMMISSION_RATE * 100).toFixed(0)}%`,
+    fmtM(commission)
+  ));
+
+  const audit: AuditGroup[] = [
+    { title: "Inputs from Roofr Report", rows: inputRows },
+    { title: "Material Quantities", rows: qtyRows },
+    { title: "Material Costs", rows: costRows },
+    { title: "Labor", rows: laborRows },
+    { title: "Pricing", rows: pricingRows },
+  ];
+
   return {
     materialItems,
     materialSubtotal,
@@ -441,6 +543,6 @@ export function calculateQuote(
     },
     totalWithUpgrades,
     commission,
-    materialAudit,
+    audit,
   };
 }

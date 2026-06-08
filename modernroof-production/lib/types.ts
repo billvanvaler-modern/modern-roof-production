@@ -3,7 +3,7 @@ export type VentilationType = "Ridge Vent" | "Box Vents" | "Box to Ridge Convers
 export interface ShingleProduct {
   id: string;
   name: string;
-  distributor: string;
+  manufacturer: string;
   description: string;
   costPerBundle: number;
   bundlesPerSquare: number;
@@ -23,13 +23,15 @@ export interface ShingleProduct {
   sortOrder?: number;
 }
 
-export interface MaterialAuditLine {
-  item: string;       // "Hip & Ridge"
-  inputs: string;     // "191.67 lf hips + 91.17 lf ridges = 282.84 lf"
-  coverage: string;   // "31 lf / bundle"
-  rawQty: string;     // "282.84 ÷ 31 = 9.12"
-  ordered: number;    // 10  (rounded up)
-  unit: string;       // "bundles"
+export interface AuditRow {
+  label: string;    // e.g. "Hip & Ridge bundles"
+  formula: string;  // e.g. "282.84 lf ÷ 31 lf/bundle = 9.12 → ceil"
+  result: string;   // e.g. "10 bundles"
+}
+
+export interface AuditGroup {
+  title: string;
+  rows: AuditRow[];
 }
 
 export interface ParsedMeasurements {
@@ -141,7 +143,7 @@ export interface QuoteResult {
   upgradeBreakdown: UpgradeBreakdown;
   totalWithUpgrades: number;
   commission: number;
-  materialAudit: MaterialAuditLine[];
+  audit: AuditGroup[];
 }
 
 export interface WizardState {

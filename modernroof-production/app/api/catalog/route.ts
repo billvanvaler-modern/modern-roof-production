@@ -32,7 +32,7 @@ function fromRow(row: ProductRow): ShingleProduct {
   return {
     id: row.id,
     name: row.name,
-    distributor: row.distributor,
+    manufacturer: row.distributor,
     description: row.description,
     costPerBundle: row.cost_per_bundle,
     bundlesPerSquare: row.bundles_per_square,
@@ -56,7 +56,7 @@ function toRow(p: ShingleProduct, index?: number): Omit<ProductRow, never> {
   return {
     id: p.id,
     name: p.name,
-    distributor: p.distributor,
+    distributor: p.manufacturer,
     description: p.description,
     cost_per_bundle: p.costPerBundle,
     bundles_per_square: p.bundlesPerSquare,

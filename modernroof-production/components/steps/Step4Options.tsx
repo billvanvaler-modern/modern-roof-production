@@ -56,10 +56,10 @@ export default function Step4Options({
       (id) => catalog.find((p) => p.id === id)?.includesWarranty
     );
 
-  // Group products by distributor
-  const byDistributor = catalog.reduce<Record<string, ShingleProduct[]>>(
+  // Group products by manufacturer
+  const byManufacturer = catalog.reduce<Record<string, ShingleProduct[]>>(
     (acc, p) => {
-      (acc[p.distributor] ??= []).push(p);
+      (acc[p.manufacturer] ??= []).push(p);
       return acc;
     },
     {}
@@ -80,10 +80,10 @@ export default function Step4Options({
         <h3 className="text-sm font-bold uppercase tracking-wide text-blue-600 mb-4">
           Products to Quote
         </h3>
-        {Object.entries(byDistributor).map(([distributor, products]) => (
-          <div key={distributor} className="mb-5">
+        {Object.entries(byManufacturer).map(([manufacturer, products]) => (
+          <div key={manufacturer} className="mb-5">
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">
-              {distributor}
+              {manufacturer}
             </p>
             <div className="space-y-2">
               {products.map((product) => {

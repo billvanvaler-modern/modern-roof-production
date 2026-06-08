@@ -4,7 +4,7 @@ export const DEFAULT_CATALOG: ShingleProduct[] = [
   {
     id: "atlas-castlebrook",
     name: "Atlas Castlebrook",
-    distributor: "Atlas",
+    manufacturer:"Atlas",
     description:
       "Castlebrook® shingles provide excellent protection with a warranty covering winds up to 130 mph. Elegant architectural look in seven color options. Unrated Class 2 Impact. Limited Lifetime Warranty.",
     costPerBundle: 35.0,
@@ -26,7 +26,7 @@ export const DEFAULT_CATALOG: ShingleProduct[] = [
   {
     id: "atlas-pinnacle-pristine",
     name: "Atlas Pinnacle Pristine",
-    distributor: "Atlas",
+    manufacturer:"Atlas",
     description:
       "Pinnacle® Pristine shingles offer Class 3 impact resistance, winds up to 130 mph, and 3M™ Scotchgard™ Protector. Available in 16 colors. Limited Lifetime Warranty with 15-year non-prorated period.",
     costPerBundle: 35.0,
@@ -48,7 +48,7 @@ export const DEFAULT_CATALOG: ShingleProduct[] = [
   {
     id: "malarkey-highlander",
     name: "Malarkey Highlander",
-    distributor: "Malarkey",
+    manufacturer:"Malarkey",
     description:
       "NEX® Rubberized Asphalt SBS polymer-modified shingle with Class 3 hail impact rating. Algae-resistant granules. Limited Lifetime Warranty with 10-year non-prorated period.",
     costPerBundle: 42.0,
@@ -70,7 +70,7 @@ export const DEFAULT_CATALOG: ShingleProduct[] = [
   {
     id: "malarkey-vista",
     name: "Malarkey Vista",
-    distributor: "Malarkey",
+    manufacturer:"Malarkey",
     description:
       "NEX® Rubberized Asphalt SBS polymer-modified shingle with Class 4 hail impact rating. Emerald Pro Warranty included — 50-year non-prorated period & Lifetime Pipeboots.",
     costPerBundle: 45.32,
@@ -92,7 +92,7 @@ export const DEFAULT_CATALOG: ShingleProduct[] = [
   {
     id: "malarkey-legacy",
     name: "Malarkey Legacy",
-    distributor: "Malarkey",
+    manufacturer:"Malarkey",
     description:
       "NEX® Rubberized Asphalt SBS polymer-modified shingle with Class 4 hail impact rating. Scotchgard™ granules. Emerald Pro Warranty included — 50-year non-prorated period & Lifetime Pipeboots.",
     costPerBundle: 47.55,

@@ -7,7 +7,7 @@ import { fetchCatalog, pushCatalog, resetCatalogRemote, DEFAULT_CATALOG } from "
 
 const EMPTY_PRODUCT: Omit<ShingleProduct, "id"> = {
   name: "",
-  distributor: "",
+  manufacturer: "",
   description: "",
   costPerBundle: 0,
   bundlesPerSquare: 3,
@@ -25,8 +25,8 @@ const EMPTY_PRODUCT: Omit<ShingleProduct, "id"> = {
   iceWaterLfPerRoll: 66,
 };
 
-function generateId(name: string, distributor: string): string {
-  return `${distributor}-${name}`
+function generateId(name: string, manufacturer: string): string {
+  return `${manufacturer}-${name}`
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "");
@@ -75,10 +75,10 @@ export default function SettingsPage() {
   }
 
   async function saveForm() {
-    if (!form.name.trim() || !form.distributor.trim()) return;
+    if (!form.name.trim() || !form.manufacturer.trim()) return;
     if (isAdding) {
       const newProduct: ShingleProduct = {
-        id: generateId(form.name, form.distributor),
+        id: generateId(form.name, form.manufacturer),
         ...form,
       };
       await persist([...catalog, newProduct]);
@@ -202,11 +202,11 @@ export default function SettingsPage() {
                   className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </Field>
-              <Field label="Distributor *">
+              <Field label="Manufacturer *">
                 <input
                   type="text"
-                  value={form.distributor}
-                  onChange={(e) => setField("distributor", e.target.value)}
+                  value={form.manufacturer}
+                  onChange={(e) => setField("manufacturer", e.target.value)}
                   placeholder="e.g. Tamco"
                   className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
@@ -273,9 +273,9 @@ export default function SettingsPage() {
               </button>
               <button
                 onClick={saveForm}
-                disabled={!form.name.trim() || !form.distributor.trim()}
+                disabled={!form.name.trim() || !form.manufacturer.trim()}
                 className={`px-5 py-2.5 rounded-xl font-semibold text-sm transition-colors ${
-                  form.name.trim() && form.distributor.trim()
+                  form.name.trim() && form.manufacturer.trim()
                     ? "bg-blue-600 text-white hover:bg-blue-700"
                     : "bg-gray-200 text-gray-400 cursor-not-allowed"
                 }`}
@@ -341,7 +341,7 @@ export default function SettingsPage() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
                           <p className="font-semibold text-gray-900">{product.name}</p>
-                          <span className="text-xs text-gray-400">{product.distributor}</span>
+                          <span className="text-xs text-gray-400">{product.manufacturer}</span>
                           {isDefault && (
                             <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">default</span>
                           )}

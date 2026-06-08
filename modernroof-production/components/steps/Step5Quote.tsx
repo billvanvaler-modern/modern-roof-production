@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, Fragment } from "react";
-import type { QuoteResult, MaterialAuditLine, Measurements, QuoteOptions, ShingleProduct } from "@/lib/types";
+import { useState } from "react";
+import type { QuoteResult, AuditGroup, Measurements, QuoteOptions, ShingleProduct } from "@/lib/types";
 
 export interface ProductQuote {
   product: ShingleProduct;
@@ -141,7 +141,7 @@ export default function Step5Quote({ measurements, options, quotes, onBack, onRe
                     <tr key={product.id} className="border-t border-gray-50">
                       <td className="px-4 py-3">
                         <p className="font-medium text-gray-800">{product.name}</p>
-                        <p className="text-xs text-gray-400">{product.distributor}</p>
+                        <p className="text-xs text-gray-400">{product.manufacturer}</p>
                       </td>
                       <td className="px-4 py-3 text-right font-bold text-gray-900">
                         {fmt(result.retailPrice)}
@@ -404,7 +404,7 @@ function ProductCard({
         className="w-full bg-[#1a2744] text-white px-6 py-4 flex items-center justify-between"
       >
         <div className="text-left">
-          <p className="text-xs text-blue-300 font-medium">{product.distributor}</p>
+          <p className="text-xs text-blue-300 font-medium">{product.manufacturer}</p>
           <p className="text-lg font-bold">{product.name}</p>
           {(product.includesPipeboots || product.includesWarranty) && (
             <div className="flex gap-2 mt-1">
@@ -534,10 +534,9 @@ function ProductCard({
             </div>
           </section>
 
-          {/* Upgrades */}
           {/* Calculation Audit — internal use only, never prints */}
-          {result.materialAudit && result.materialAudit.length > 0 && (
-            <AuditSection audit={result.materialAudit} />
+          {result.audit && result.audit.length > 0 && (
+            <AuditSection audit={result.audit} />
           )}
 
           {result.upgradeBreakdown.total > 0 && (
@@ -614,50 +613,64 @@ function ProductCard({
   );
 }
 
-function AuditSection({ audit }: { audit: MaterialAuditLine[] }) {
+function AuditSection({ audit }: { audit: AuditGroup[] }) {
   const [open, setOpen] = useState(false);
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
+
+  function toggleGroup(title: string) {
+    setOpenGroups((prev) => ({ ...prev, [title]: !prev[title] }));
+  }
+
   return (
     <section className="print:hidden">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-2 text-xs font-semibold text-gray-400 hover:text-gray-600 transition-colors mb-2"
+        className="flex items-center gap-2 text-xs font-semibold text-amber-600 hover:text-amber-800 transition-colors mb-2"
       >
         <span className="text-base leading-none">{open ? "▾" : "▸"}</span>
-        {open ? "Hide" : "Show"} calculation details
+        {open ? "Hide" : "Show"} full calculation audit
       </button>
 
       {open && (
-        <div className="border border-amber-100 bg-amber-50 rounded-xl overflow-hidden">
-          <table className="w-full text-xs">
-            <thead>
-              <tr className="bg-amber-100 text-amber-700 uppercase tracking-wide">
-                <th className="text-left px-3 py-2">Item</th>
-                <th className="text-left px-3 py-2">Measurements used</th>
-                <th className="text-center px-3 py-2">Coverage rate</th>
-                <th className="text-center px-3 py-2">Math</th>
-                <th className="text-right px-3 py-2">Ordered</th>
-              </tr>
-            </thead>
-            <tbody>
-              {audit.map((row, i) => (
-                <Fragment key={i}>
-                  <tr className={`border-t border-amber-100 ${i % 2 === 0 ? "" : "bg-white/40"}`}>
-                    <td className="px-3 py-2 font-semibold text-amber-900">{row.item}</td>
-                    <td className="px-3 py-2 text-amber-800">{row.inputs}</td>
-                    <td className="px-3 py-2 text-center text-amber-700">{row.coverage}</td>
-                    <td className="px-3 py-2 text-center text-amber-700 font-mono">{row.rawQty}</td>
-                    <td className="px-3 py-2 text-right font-bold text-amber-900">
-                      {row.ordered} {row.unit}
-                    </td>
-                  </tr>
-                </Fragment>
-              ))}
-            </tbody>
-          </table>
-          <p className="text-xs text-amber-600 px-3 py-2 border-t border-amber-100">
-            All quantities are rounded up to the next whole unit.
-          </p>
+        <div className="space-y-2">
+          {audit.map((group) => {
+            const isOpen = openGroups[group.title] !== false; // default open
+            return (
+              <div key={group.title} className="border border-amber-100 bg-amber-50 rounded-xl overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => toggleGroup(group.title)}
+                  className="w-full flex items-center justify-between px-4 py-2 bg-amber-100 hover:bg-amber-200 transition-colors"
+                >
+                  <span className="text-xs font-bold uppercase tracking-wide text-amber-800">
+                    {group.title}
+                  </span>
+                  <span className="text-amber-600 text-sm">{isOpen ? "▾" : "▸"}</span>
+                </button>
+                {isOpen && (
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="text-amber-600 text-left">
+                        <th className="px-4 py-1.5 font-semibold w-1/4">Calculation</th>
+                        <th className="px-4 py-1.5 font-semibold">Formula</th>
+                        <th className="px-4 py-1.5 font-semibold text-right w-36">Result</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {group.rows.map((r, i) => (
+                        <tr key={i} className={`border-t border-amber-100 ${i % 2 === 1 ? "bg-white/50" : ""}`}>
+                          <td className="px-4 py-1.5 font-medium text-amber-900">{r.label}</td>
+                          <td className="px-4 py-1.5 text-amber-700 font-mono">{r.formula}</td>
+                          <td className="px-4 py-1.5 text-right font-bold text-amber-900">{r.result}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
     </section>
