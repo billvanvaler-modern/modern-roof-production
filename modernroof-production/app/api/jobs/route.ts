@@ -8,13 +8,34 @@ function getSupabase() {
   return createClient(url, key);
 }
 
-// POST /api/jobs — create a job from a finalized quote
+// POST /api/jobs — create a job from a finalized quote OR manually
 export async function POST(request: Request) {
   const supabase = getSupabase();
   if (!supabase) return NextResponse.json({ error: "DB unavailable" }, { status: 503 });
 
   const body = await request.json();
   const { quoteId, measurements, jobDetails, options, results } = body;
+
+  // ── Manual job creation (no quoteId / measurements) ──────────────────────
+  if (!quoteId && !measurements) {
+    const { data: job, error } = await supabase
+      .from("jobs")
+      .insert({
+        customer_name: body.customer_name ?? null,
+        phone:         body.phone         ?? null,
+        email:         body.email         ?? null,
+        address:       body.address       ?? null,
+        city:          body.city          ?? null,
+        state:         body.state         ?? null,
+        zip:           body.zip           ?? null,
+        sales_rep:     body.sales_rep     ?? null,
+        status:        "not_started",
+      })
+      .select("*, preproduction(id, submitted_at)")
+      .single();
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json(job);
+  }
 
   // Parse city/state/zip out of the address string if present
   // Address format from Roofr: "123 Main St, Indianapolis, IN 46240"

@@ -129,26 +129,30 @@ export default function Home() {
     if (!form.customer_name.trim()) { setFormError('Customer name is required.'); return; }
     setSaving(true);
     setFormError('');
-    const { data, error } = await supabase
-      .from('jobs')
-      .insert({
-        customer_name: form.customer_name.trim() || null,
-        address:       form.address.trim()       || null,
-        city:          form.city.trim()           || null,
-        state:         form.state.trim()          || null,
-        zip:           form.zip.trim()            || null,
-        phone:         form.phone.trim()          || null,
-        email:         form.email.trim()          || null,
-        sales_rep:     form.sales_rep.trim()      || null,
-        status:        'not_started',
-      })
-      .select('*, preproduction(id, submitted_at)')
-      .single();
+    try {
+      const res = await fetch('/api/jobs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          customer_name: form.customer_name.trim() || null,
+          address:       form.address.trim()       || null,
+          city:          form.city.trim()           || null,
+          state:         form.state.trim()          || null,
+          zip:           form.zip.trim()            || null,
+          phone:         form.phone.trim()          || null,
+          email:         form.email.trim()          || null,
+          sales_rep:     form.sales_rep.trim()      || null,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setFormError('Save failed: ' + (data.error || res.statusText)); setSaving(false); return; }
+      setJobs(prev => [data, ...prev]);
+      setForm(EMPTY_FORM);
+      setShowAddForm(false);
+    } catch (err) {
+      setFormError('Save failed: ' + err.message);
+    }
     setSaving(false);
-    if (error) { setFormError('Save failed: ' + error.message); return; }
-    setJobs(prev => [data, ...prev]);
-    setForm(EMPTY_FORM);
-    setShowAddForm(false);
   }
 
   function cancelAdd() {
