@@ -108,10 +108,13 @@ export default function SettingsPage() {
     setForm((prev) => ({ ...prev, [key]: val }));
   }
 
-  const byDistributor = catalog.reduce<Record<string, ShingleProduct[]>>((acc, p) => {
-    (acc[p.distributor] ??= []).push(p);
-    return acc;
-  }, {});
+  function moveProduct(index: number, direction: "up" | "down") {
+    const swapIdx = direction === "up" ? index - 1 : index + 1;
+    if (swapIdx < 0 || swapIdx >= catalog.length) return;
+    const reordered = [...catalog];
+    [reordered[index], reordered[swapIdx]] = [reordered[swapIdx], reordered[index]];
+    persist(reordered);
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -279,75 +282,92 @@ export default function SettingsPage() {
             <p className="text-sm">Add a product or reset to defaults to get started.</p>
           </div>
         ) : (
-          <div className="space-y-6">
-            {Object.entries(byDistributor).map(([distributor, products]) => (
-              <div key={distributor}>
-                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">
-                  {distributor}
-                </p>
-                <div className="space-y-3">
-                  {products.map((product) => {
-                    const isDefault = DEFAULT_CATALOG.some((d) => d.id === product.id);
-                    return (
-                      <div
-                        key={product.id}
-                        className={`bg-white rounded-xl border p-4 transition-colors ${
-                          editingId === product.id ? "border-blue-300" : "border-gray-200"
-                        }`}
-                      >
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <p className="font-semibold text-gray-900">{product.name}</p>
-                              {isDefault && (
-                                <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">
-                                  default
-                                </span>
-                              )}
-                              {product.includesPipeboots && (
-                                <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
-                                  Pipeboots
-                                </span>
-                              )}
-                              {product.includesWarranty && (
-                                <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
-                                  Warranty
-                                </span>
-                              )}
-                            </div>
-                            <p className="text-xs text-gray-500 mt-0.5 whitespace-pre-line">{product.description}</p>
-                            <div className="flex flex-wrap gap-x-4 gap-y-0.5 mt-2">
-                              <Stat label="Shingles" value={`$${product.costPerBundle}/bundle`} />
-                              <Stat label="Bundles/sq" value={product.bundlesPerSquare} />
-                              <Stat label="Hip & Ridge" value={`$${product.hipRidgeCostPerBundle}/bundle`} />
-                              <Stat label="Starter" value={`$${product.starterCostPerBundle}/bundle`} />
-                              <Stat label="Underlayment" value={`$${product.underlaymentCostPerRoll}/roll`} />
-                              <Stat label="Ice & Water" value={`$${product.iceWaterCostPerRoll}/roll`} />
-                              <Stat label="Ridge Vent" value={`$${product.ridgeVentCostPer4ft}/4ft`} />
-                              <Stat label="Pipe Jack" value={`$${product.pipeJackCost}`} />
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2 flex-shrink-0">
-                            <button
-                              onClick={() => (editingId === product.id ? cancelForm() : startEdit(product))}
-                              className="px-3 py-1.5 text-xs font-medium border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-600 transition-colors"
-                            >
-                              {editingId === product.id ? "Cancel" : "Edit"}
-                            </button>
-                            <button
-                              onClick={() => deleteProduct(product.id)}
-                              className="px-3 py-1.5 text-xs font-medium border border-red-100 rounded-lg hover:bg-red-50 text-red-500 transition-colors"
-                            >
-                              Delete
-                            </button>
-                          </div>
+          <div className="space-y-3">
+            <p className="text-xs text-gray-400 mb-1">
+              Use the ↑ ↓ arrows to set the order products appear in the quote — lowest quality at top, highest at bottom.
+            </p>
+            {catalog.map((product, index) => {
+              const isDefault = DEFAULT_CATALOG.some((d) => d.id === product.id);
+              return (
+                <div
+                  key={product.id}
+                  className={`bg-white rounded-xl border p-4 transition-colors flex gap-3 ${
+                    editingId === product.id ? "border-blue-300" : "border-gray-200"
+                  }`}
+                >
+                  {/* Reorder buttons */}
+                  <div className="flex flex-col gap-0.5 flex-shrink-0 pt-0.5">
+                    <button
+                      onClick={() => moveProduct(index, "up")}
+                      disabled={index === 0}
+                      title="Move up"
+                      className="w-6 h-6 flex items-center justify-center rounded text-gray-300 hover:text-gray-600 hover:bg-gray-100 disabled:opacity-20 disabled:cursor-not-allowed transition-colors text-xs font-bold"
+                    >
+                      ▲
+                    </button>
+                    <button
+                      onClick={() => moveProduct(index, "down")}
+                      disabled={index === catalog.length - 1}
+                      title="Move down"
+                      className="w-6 h-6 flex items-center justify-center rounded text-gray-300 hover:text-gray-600 hover:bg-gray-100 disabled:opacity-20 disabled:cursor-not-allowed transition-colors text-xs font-bold"
+                    >
+                      ▼
+                    </button>
+                  </div>
+
+                  {/* Position badge */}
+                  <div className="flex-shrink-0 w-6 text-center pt-1">
+                    <span className="text-xs font-bold text-gray-300">{index + 1}</span>
+                  </div>
+
+                  {/* Product details */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="font-semibold text-gray-900">{product.name}</p>
+                          <span className="text-xs text-gray-400">{product.distributor}</span>
+                          {isDefault && (
+                            <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">default</span>
+                          )}
+                          {product.includesPipeboots && (
+                            <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">Pipeboots</span>
+                          )}
+                          {product.includesWarranty && (
+                            <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">Warranty</span>
+                          )}
+                        </div>
+                        <p className="text-xs text-gray-500 mt-0.5 whitespace-pre-line">{product.description}</p>
+                        <div className="flex flex-wrap gap-x-4 gap-y-0.5 mt-2">
+                          <Stat label="Shingles" value={`$${product.costPerBundle}/bundle`} />
+                          <Stat label="Bundles/sq" value={product.bundlesPerSquare} />
+                          <Stat label="Hip & Ridge" value={`$${product.hipRidgeCostPerBundle}/bundle`} />
+                          <Stat label="Starter" value={`$${product.starterCostPerBundle}/bundle`} />
+                          <Stat label="Underlayment" value={`$${product.underlaymentCostPerRoll}/roll`} />
+                          <Stat label="Ice & Water" value={`$${product.iceWaterCostPerRoll}/roll`} />
+                          <Stat label="Ridge Vent" value={`$${product.ridgeVentCostPer4ft}/4ft`} />
+                          <Stat label="Pipe Jack" value={`$${product.pipeJackCost}`} />
                         </div>
                       </div>
-                    );
-                  })}
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <button
+                          onClick={() => (editingId === product.id ? cancelForm() : startEdit(product))}
+                          className="px-3 py-1.5 text-xs font-medium border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-600 transition-colors"
+                        >
+                          {editingId === product.id ? "Cancel" : "Edit"}
+                        </button>
+                        <button
+                          onClick={() => deleteProduct(product.id)}
+                          className="px-3 py-1.5 text-xs font-medium border border-red-100 rounded-lg hover:bg-red-50 text-red-500 transition-colors"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </main>

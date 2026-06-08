@@ -15,6 +15,7 @@ export interface ShingleProduct {
   iceWaterCostPerRoll: number;
   ridgeVentCostPer4ft: number;
   pipeJackCost: number;
+  sortOrder?: number;
 }
 
 export interface ParsedMeasurements {

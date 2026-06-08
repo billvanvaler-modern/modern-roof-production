@@ -17,6 +17,7 @@ export const DEFAULT_CATALOG: ShingleProduct[] = [
     iceWaterCostPerRoll: 89.0,
     ridgeVentCostPer4ft: 17.9,
     pipeJackCost: 10.6,
+    sortOrder: 0,
   },
   {
     id: "atlas-pinnacle-pristine",
@@ -34,6 +35,7 @@ export const DEFAULT_CATALOG: ShingleProduct[] = [
     iceWaterCostPerRoll: 89.0,
     ridgeVentCostPer4ft: 17.9,
     pipeJackCost: 10.6,
+    sortOrder: 1,
   },
   {
     id: "malarkey-highlander",
@@ -51,6 +53,7 @@ export const DEFAULT_CATALOG: ShingleProduct[] = [
     iceWaterCostPerRoll: 63.87,
     ridgeVentCostPer4ft: 16.63,
     pipeJackCost: 10.6,
+    sortOrder: 2,
   },
   {
     id: "malarkey-vista",
@@ -68,6 +71,7 @@ export const DEFAULT_CATALOG: ShingleProduct[] = [
     iceWaterCostPerRoll: 63.87,
     ridgeVentCostPer4ft: 16.63,
     pipeJackCost: 60.0,
+    sortOrder: 3,
   },
   {
     id: "malarkey-legacy",
@@ -85,6 +89,7 @@ export const DEFAULT_CATALOG: ShingleProduct[] = [
     iceWaterCostPerRoll: 63.87,
     ridgeVentCostPer4ft: 16.63,
     pipeJackCost: 60.0,
+    sortOrder: 4,
   },
 ];
 

@@ -21,6 +21,7 @@ interface ProductRow {
   ice_water_cost_per_roll: number;
   ridge_vent_cost_per_4ft: number;
   pipe_jack_cost: number;
+  sort_order: number;
 }
 
 function fromRow(row: ProductRow): ShingleProduct {
@@ -39,10 +40,11 @@ function fromRow(row: ProductRow): ShingleProduct {
     iceWaterCostPerRoll: row.ice_water_cost_per_roll,
     ridgeVentCostPer4ft: row.ridge_vent_cost_per_4ft,
     pipeJackCost: row.pipe_jack_cost,
+    sortOrder: row.sort_order ?? 0,
   };
 }
 
-function toRow(p: ShingleProduct): Omit<ProductRow, never> {
+function toRow(p: ShingleProduct, index?: number): Omit<ProductRow, never> {
   return {
     id: p.id,
     name: p.name,
@@ -58,6 +60,7 @@ function toRow(p: ShingleProduct): Omit<ProductRow, never> {
     ice_water_cost_per_roll: p.iceWaterCostPerRoll,
     ridge_vent_cost_per_4ft: p.ridgeVentCostPer4ft,
     pipe_jack_cost: p.pipeJackCost,
+    sort_order: index !== undefined ? index : (p.sortOrder ?? 0),
   };
 }
 
@@ -80,8 +83,8 @@ export async function GET() {
   const { data, error } = await supabase
     .from("products")
     .select("*")
-    .order("distributor")
-    .order("name");
+    .order("sort_order", { ascending: true })
+    .order("name", { ascending: true });
 
   if (error) {
     console.error("Supabase GET error:", error.message);
@@ -121,7 +124,8 @@ export async function POST(request: Request) {
   }
 
   if (products.length > 0) {
-    const { error } = await supabase.from("products").upsert(products.map(toRow));
+    // Pass the array index so sort_order always reflects the saved order
+    const { error } = await supabase.from("products").upsert(products.map((p, i) => toRow(p, i)));
     if (error) {
       console.error("Upsert error:", error.message);
       return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
