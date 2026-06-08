@@ -4,16 +4,10 @@ import { supabase } from '../lib/supabase';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
-const C = {
-  gold: '#F5B800', dark: '#333', mid: '#555', muted: '#999',
-  border: '#DDD', panel: '#F7F7F5', white: '#FFF',
-  error: '#D93025',
-};
-
 const STATUSES = [
-  { key: 'not_started', label: 'Not Started', color: '#92600A', bg: '#FFF9E6', border: '#FDE68A' },
-  { key: 'in_process',  label: 'In Process',  color: '#1D4ED8', bg: '#EFF6FF', border: '#BFDBFE' },
-  { key: 'complete',    label: 'Complete',     color: '#16A34A', bg: '#F0FDF4', border: '#BBF7D0' },
+  { key: 'not_started', label: 'Not Started', pill: 'bg-amber-100 text-amber-800 border-amber-200',  dot: '#92600A' },
+  { key: 'in_process',  label: 'In Process',  pill: 'bg-blue-100  text-blue-800  border-blue-200',   dot: '#1D4ED8' },
+  { key: 'complete',    label: 'Complete',     pill: 'bg-green-100 text-green-800 border-green-200',  dot: '#16A34A' },
 ];
 
 function StatusBadge({ status, jobId, onUpdate }) {
@@ -27,39 +21,39 @@ function StatusBadge({ status, jobId, onUpdate }) {
   };
 
   return (
-    <div style={{ position: 'relative' }}>
-      <div
-        onClick={e => { e.preventDefault(); e.stopPropagation(); setOpen(!open); }}
-        style={{
-          fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 20,
-          background: current.bg, color: current.color, border: `1px solid ${current.border}`,
-          cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap',
-        }}
+    <div className="relative">
+      <button
+        type="button"
+        onClick={e => { e.preventDefault(); e.stopPropagation(); setOpen(v => !v); }}
+        className={`text-xs font-semibold px-3 py-1 rounded-full border cursor-pointer select-none ${current.pill}`}
       >
         {current.label} ▾
-      </div>
+      </button>
       {open && (
-        <div style={{
-          position: 'absolute', right: 0, top: 28, zIndex: 100,
-          background: C.white, border: `1px solid ${C.border}`,
-          borderRadius: 6, boxShadow: '0 4px 12px rgba(0,0,0,0.12)',
-          overflow: 'hidden', minWidth: 140,
-        }}>
+        <div className="absolute right-0 top-8 z-50 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden min-w-[148px]">
           {STATUSES.map(s => (
-            <div key={s.key} onClick={e => { e.preventDefault(); e.stopPropagation(); update(s.key); }}
-              style={{
-                padding: '9px 14px', cursor: 'pointer', fontSize: 12, fontWeight: 600,
-                color: s.color, background: status === s.key ? s.bg : C.white,
-                borderBottom: `1px solid ${C.border}`,
-              }}>
+            <button
+              key={s.key}
+              type="button"
+              onClick={e => { e.preventDefault(); e.stopPropagation(); update(s.key); }}
+              className={`w-full text-left px-4 py-2.5 text-xs font-semibold border-b border-gray-100 last:border-0 hover:bg-gray-50 transition-colors ${s.key === status ? 'bg-gray-50' : ''}`}
+              style={{ color: s.dot }}
+            >
               {s.label}
-            </div>
+            </button>
           ))}
         </div>
       )}
     </div>
   );
 }
+
+const FILTER_TABS = [
+  { key: 'all',         label: 'All' },
+  { key: 'not_started', label: 'Not Started' },
+  { key: 'in_process',  label: 'In Process' },
+  { key: 'complete',    label: 'Complete' },
+];
 
 export default function Home() {
   const router = useRouter();
@@ -87,7 +81,8 @@ export default function Home() {
       if (!parseRes.ok) throw new Error(parseJson.error || 'Parse failed');
       const m = parseJson.measurements;
       const wastePct = m.recommendedWastePct ?? 10;
-      const squaresWithWaste = m.wasteTable?.[wastePct] ??
+      const squaresWithWaste =
+        m.wasteTable?.[wastePct] ??
         Math.round((m.totalAreaSqft / 100) * (1 + wastePct / 100) * 10) / 10;
       const measurements = { ...m, wastePct, squaresWithWaste };
 
@@ -102,148 +97,164 @@ export default function Home() {
       });
       const { id } = await quoteRes.json();
       router.push(`/quotes/${id}`);
-    } catch (err) {
+    } catch {
       setUploadError('Could not read PDF. Make sure it is a Roofr report.');
       setUploading(false);
     }
   }
 
   useEffect(() => {
-    const load = async () => {
-      const { data } = await supabase
-        .from('jobs')
-        .select('*, preproduction(id, submitted_at)')
-        .order('created_at', { ascending: false });
-      setJobs(data || []);
-      setLoading(false);
-    };
-    load();
+    supabase
+      .from('jobs')
+      .select('*, preproduction(id, submitted_at)')
+      .order('created_at', { ascending: false })
+      .then(({ data }) => {
+        setJobs(data || []);
+        setLoading(false);
+      });
   }, []);
 
-  const updateStatus = (jobId, newStatus) => {
+  const updateStatus = (jobId, newStatus) =>
     setJobs(prev => prev.map(j => j.id === jobId ? { ...j, status: newStatus } : j));
-  };
 
   const filtered = jobs.filter(j => {
+    const q = search.toLowerCase();
     const matchSearch =
-      j.customer_name?.toLowerCase().includes(search.toLowerCase()) ||
-      j.id?.toLowerCase().includes(search.toLowerCase()) ||
-      j.sales_rep?.toLowerCase().includes(search.toLowerCase()) ||
-      j.address?.toLowerCase().includes(search.toLowerCase());
-    const matchFilter = filter === 'all' || j.status === filter;
-    return matchSearch && matchFilter;
+      !q ||
+      j.customer_name?.toLowerCase().includes(q) ||
+      j.id?.toLowerCase().includes(q) ||
+      j.sales_rep?.toLowerCase().includes(q) ||
+      j.address?.toLowerCase().includes(q);
+    return matchSearch && (filter === 'all' || j.status === filter);
   });
 
   const counts = {
-    all: jobs.length,
+    all:         jobs.length,
     not_started: jobs.filter(j => j.status === 'not_started').length,
     in_process:  jobs.filter(j => j.status === 'in_process').length,
     complete:    jobs.filter(j => j.status === 'complete').length,
   };
 
   return (
-    <div style={{ minHeight: '100vh', background: C.panel }}>
-      {/* Header */}
-      <div style={{ background: C.white, borderBottom: `3px solid ${C.gold}`, padding: '16px 28px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{ background: C.gold, color: '#111', fontWeight: 700, fontSize: 12, letterSpacing: '0.12em', padding: '4px 9px', borderRadius: 3 }}>MODERN ROOF</div>
-          <span style={{ fontSize: 16, fontWeight: 700, color: C.dark }}>Pre-Production</span>
+    <div className="min-h-screen bg-gray-50">
+      {/* ── Header ── */}
+      <header className="bg-[#1a2744] text-white px-6 py-4">
+        <div className="max-w-4xl mx-auto flex items-center justify-between">
+          <div>
+            <h1 className="text-xl font-bold tracking-tight">Modern Roof</h1>
+            <p className="text-blue-300 text-xs">Pre-Production</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <Link
+              href="/quote"
+              className="bg-amber-400 hover:bg-amber-300 text-gray-900 text-sm font-semibold px-4 py-2 rounded-lg transition-colors"
+            >
+              + New Quote
+            </Link>
+            <Link
+              href="/admin"
+              className="text-blue-300 hover:text-white text-sm transition-colors"
+            >
+              Admin
+            </Link>
+          </div>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <Link href="/quote" style={{ fontSize: 13, fontWeight: 700, color: '#111', textDecoration: 'none', background: C.gold, padding: '7px 16px', borderRadius: 4 }}>
-            + New Quote
-          </Link>
-          <Link href="/admin" style={{ fontSize: 12, color: C.muted, textDecoration: 'none', border: `1px solid ${C.border}`, padding: '6px 12px', borderRadius: 4, background: C.white }}>
-            ⚙️ Admin
-          </Link>
-        </div>
-      </div>
+      </header>
 
-      <div style={{ maxWidth: 860, margin: '0 auto', padding: '24px 16px' }}>
-
-        {/* Quick-start: drop a Roofr PDF to create a quote */}
-        <input ref={fileInputRef} type="file" accept="application/pdf" style={{ display: 'none' }}
-          onChange={e => { const f = e.target.files?.[0]; if (f) handlePdfFile(f); e.target.value = ''; }} />
+      <main className="max-w-4xl mx-auto px-6 py-8">
+        {/* ── PDF Drop Zone ── */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="application/pdf"
+          className="hidden"
+          onChange={e => { const f = e.target.files?.[0]; if (f) handlePdfFile(f); e.target.value = ''; }}
+        />
         <div
           onDragOver={e => { e.preventDefault(); setDragOver(true); }}
           onDragLeave={() => setDragOver(false)}
           onDrop={e => { e.preventDefault(); setDragOver(false); handlePdfFile(e.dataTransfer.files?.[0]); }}
           onClick={() => fileInputRef.current?.click()}
-          style={{
-            border: `2px dashed ${dragOver ? C.gold : C.border}`,
-            borderRadius: 8, padding: '18px 24px', marginBottom: 16,
-            background: dragOver ? '#FFFBEA' : C.white,
-            display: 'flex', alignItems: 'center', gap: 14,
-            cursor: 'pointer', transition: 'all 0.15s',
-          }}
+          className={`border-2 border-dashed rounded-xl px-5 py-4 mb-5 flex items-center gap-4 cursor-pointer transition-all ${
+            dragOver ? 'border-amber-400 bg-amber-50' : 'border-gray-200 bg-white hover:border-gray-300'
+          }`}
         >
-          <svg width="28" height="28" fill="none" stroke={dragOver ? '#B45309' : C.muted} strokeWidth="1.5" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+          <svg
+            className={`w-7 h-7 flex-shrink-0 transition-colors ${dragOver ? 'text-amber-500' : 'text-gray-400'}`}
+            fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round"
+              d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
           </svg>
-          <div style={{ flex: 1 }}>
-            {uploading
-              ? <span style={{ fontSize: 13, color: C.mid }}>Parsing Roofr report…</span>
-              : <><span style={{ fontSize: 13, fontWeight: 600, color: C.dark }}>Drop a Roofr PDF to start a new quote</span>
-                  <span style={{ fontSize: 12, color: C.muted, marginLeft: 8 }}>or click to browse</span></>
-            }
-            {uploadError && <div style={{ fontSize: 12, color: C.error, marginTop: 2 }}>{uploadError}</div>}
+          <div className="flex-1 min-w-0">
+            {uploading ? (
+              <p className="text-sm text-gray-500">Parsing Roofr report…</p>
+            ) : (
+              <p className="text-sm">
+                <span className="font-semibold text-gray-800">Drop a Roofr PDF to start a new quote</span>
+                <span className="text-gray-400 ml-2">or click to browse</span>
+              </p>
+            )}
+            {uploadError && <p className="text-xs text-red-500 mt-1">{uploadError}</p>}
           </div>
         </div>
 
-        {/* Search */}
-        <input type="text" value={search} onChange={e => setSearch(e.target.value)}
-          placeholder="Search by customer, job ID, rep, or address..."
-          style={{ width: '100%', padding: '11px 14px', fontSize: 14, border: `1px solid ${C.border}`, borderRadius: 6, marginBottom: 14, background: C.white, outline: 'none', boxSizing: 'border-box' }}
+        {/* ── Search ── */}
+        <input
+          type="text"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          placeholder="Search by customer, job ID, rep, or address…"
+          className="w-full px-4 py-3 text-sm border border-gray-200 rounded-xl mb-4 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
 
-        {/* Filter tabs */}
-        <div style={{ display: 'flex', gap: 8, marginBottom: 18, flexWrap: 'wrap' }}>
-          {[
-            { key: 'all',         label: 'All' },
-            { key: 'not_started', label: 'Not Started' },
-            { key: 'in_process',  label: 'In Process' },
-            { key: 'complete',    label: 'Complete' },
-          ].map(tab => (
-            <button key={tab.key} onClick={() => setFilter(tab.key)} style={{
-              padding: '7px 16px', borderRadius: 20, border: `1px solid ${filter === tab.key ? C.gold : C.border}`,
-              background: filter === tab.key ? C.gold : C.white,
-              color: filter === tab.key ? '#111' : C.mid,
-              fontWeight: filter === tab.key ? 700 : 400,
-              fontSize: 12, cursor: 'pointer', fontFamily: 'inherit',
-            }}>
-              {tab.label} <span style={{ opacity: 0.7 }}>({counts[tab.key]})</span>
+        {/* ── Filter tabs ── */}
+        <div className="flex gap-2 mb-6 flex-wrap">
+          {FILTER_TABS.map(tab => (
+            <button
+              key={tab.key}
+              onClick={() => setFilter(tab.key)}
+              className={`px-4 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
+                filter === tab.key
+                  ? 'bg-[#1a2744] text-white border-[#1a2744]'
+                  : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'
+              }`}
+            >
+              {tab.label} <span className="opacity-60">({counts[tab.key]})</span>
             </button>
           ))}
         </div>
 
-        {/* Job list */}
+        {/* ── Job list ── */}
         {loading ? (
-          <div style={{ textAlign: 'center', padding: 60, color: C.muted }}>Loading jobs...</div>
+          <div className="text-center py-16 text-gray-400 text-sm">Loading jobs…</div>
         ) : filtered.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: 60, color: C.muted }}>No jobs found</div>
+          <div className="text-center py-16 text-gray-400 text-sm">No jobs found</div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div className="space-y-2">
             {filtered.map(job => {
               const hasPreprod = job.preproduction?.length > 0;
               return (
-                <Link key={job.id} href={`/job/${job.id}`} style={{ textDecoration: 'none' }}>
-                  <div style={{
-                    background: C.white, border: `1px solid ${C.border}`, borderRadius: 8,
-                    padding: '14px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    boxShadow: '0 1px 3px rgba(0,0,0,0.05)', cursor: 'pointer',
-                  }}>
-                    <div>
-                      <div style={{ fontWeight: 700, fontSize: 15, color: C.dark, marginBottom: 3 }}>{job.customer_name}</div>
-                      <div style={{ fontSize: 12, color: C.muted }}>
-                        {job.address}{job.city ? `, ${job.city}` : ''}{job.sales_rep ? ` · Rep: ${job.sales_rep}` : ''}
-                      </div>
+                <Link key={job.id} href={`/job/${job.id}`} className="block">
+                  <div className="bg-white border border-gray-200 rounded-xl px-4 py-3.5 flex items-center justify-between hover:border-blue-300 hover:bg-blue-50 transition-colors">
+                    <div className="min-w-0 mr-3">
+                      <p className="font-semibold text-gray-900 text-sm truncate">{job.customer_name}</p>
+                      <p className="text-xs text-gray-500 mt-0.5 truncate">
+                        {job.address}{job.city ? `, ${job.city}` : ''}{job.sales_rep ? ` · ${job.sales_rep}` : ''}
+                      </p>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+                    <div className="flex items-center gap-3 flex-shrink-0">
                       {hasPreprod && (
-                        <span style={{ fontSize: 11, color: '#16A34A', fontWeight: 600 }}>✓ Form Complete</span>
+                        <span className="text-xs text-green-600 font-semibold hidden sm:inline">✓ Form Complete</span>
                       )}
-                      <StatusBadge status={job.status || 'not_started'} jobId={job.id} onUpdate={updateStatus} />
-                      <span style={{ color: C.muted, fontSize: 18 }}>›</span>
+                      <StatusBadge
+                        status={job.status || 'not_started'}
+                        jobId={job.id}
+                        onUpdate={updateStatus}
+                      />
+                      <svg className="w-4 h-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
                     </div>
                   </div>
                 </Link>
@@ -251,7 +262,7 @@ export default function Home() {
             })}
           </div>
         )}
-      </div>
+      </main>
     </div>
   );
 }
