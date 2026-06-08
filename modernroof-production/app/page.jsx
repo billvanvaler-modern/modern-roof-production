@@ -1,6 +1,7 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { supabase } from '../lib/supabase';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
 const C = {
@@ -61,10 +62,51 @@ function StatusBadge({ status, jobId, onUpdate }) {
 }
 
 export default function Home() {
+  const router = useRouter();
+  const fileInputRef = useRef(null);
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('all');
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState('');
+  const [dragOver, setDragOver] = useState(false);
+
+  async function handlePdfFile(file) {
+    if (!file || file.type !== 'application/pdf') {
+      setUploadError('Please drop a PDF file.');
+      return;
+    }
+    setUploading(true);
+    setUploadError('');
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      const parseRes = await fetch('/api/parse-pdf', { method: 'POST', body: fd });
+      const parseJson = await parseRes.json();
+      if (!parseRes.ok) throw new Error(parseJson.error || 'Parse failed');
+      const m = parseJson.measurements;
+      const wastePct = m.recommendedWastePct ?? 10;
+      const squaresWithWaste = m.wasteTable?.[wastePct] ??
+        Math.round((m.totalAreaSqft / 100) * (1 + wastePct / 100) * 10) / 10;
+      const measurements = { ...m, wastePct, squaresWithWaste };
+
+      const quoteRes = await fetch('/api/quotes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          customer_name: measurements.customerName,
+          address: measurements.address,
+          measurements,
+        }),
+      });
+      const { id } = await quoteRes.json();
+      router.push(`/quotes/${id}`);
+    } catch (err) {
+      setUploadError('Could not read PDF. Make sure it is a Roofr report.');
+      setUploading(false);
+    }
+  }
 
   useEffect(() => {
     const load = async () => {
@@ -118,6 +160,35 @@ export default function Home() {
       </div>
 
       <div style={{ maxWidth: 860, margin: '0 auto', padding: '24px 16px' }}>
+
+        {/* Quick-start: drop a Roofr PDF to create a quote */}
+        <input ref={fileInputRef} type="file" accept="application/pdf" style={{ display: 'none' }}
+          onChange={e => { const f = e.target.files?.[0]; if (f) handlePdfFile(f); e.target.value = ''; }} />
+        <div
+          onDragOver={e => { e.preventDefault(); setDragOver(true); }}
+          onDragLeave={() => setDragOver(false)}
+          onDrop={e => { e.preventDefault(); setDragOver(false); handlePdfFile(e.dataTransfer.files?.[0]); }}
+          onClick={() => fileInputRef.current?.click()}
+          style={{
+            border: `2px dashed ${dragOver ? C.gold : C.border}`,
+            borderRadius: 8, padding: '18px 24px', marginBottom: 16,
+            background: dragOver ? '#FFFBEA' : C.white,
+            display: 'flex', alignItems: 'center', gap: 14,
+            cursor: 'pointer', transition: 'all 0.15s',
+          }}
+        >
+          <svg width="28" height="28" fill="none" stroke={dragOver ? '#B45309' : C.muted} strokeWidth="1.5" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+          </svg>
+          <div style={{ flex: 1 }}>
+            {uploading
+              ? <span style={{ fontSize: 13, color: C.mid }}>Parsing Roofr report…</span>
+              : <><span style={{ fontSize: 13, fontWeight: 600, color: C.dark }}>Drop a Roofr PDF to start a new quote</span>
+                  <span style={{ fontSize: 12, color: C.muted, marginLeft: 8 }}>or click to browse</span></>
+            }
+            {uploadError && <div style={{ fontSize: 12, color: C.error, marginTop: 2 }}>{uploadError}</div>}
+          </div>
+        </div>
 
         {/* Search */}
         <input type="text" value={search} onChange={e => setSearch(e.target.value)}

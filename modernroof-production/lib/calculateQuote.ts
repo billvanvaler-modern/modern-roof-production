@@ -83,6 +83,7 @@ export function calculateQuote(
     gutterFeet1st,
     gutterFeet2nd,
     customOtherCost,
+    customLaborCost,
   } = jobDetails;
 
   // ─── Material Quantities ───────────────────────────────────────────────────
@@ -260,6 +261,10 @@ export function calculateQuote(
   if (osbLabor12_12 > 0)
     laborItems.push(
       laborLine("OSB Labor (12/12+)", osbLabor12_12, LABOR.osb12_12)
+    );
+  if ((customLaborCost ?? 0) > 0)
+    laborItems.push(
+      laborLine("Extra Labor", 1, customLaborCost ?? 0)
     );
 
   const laborTotal = laborItems.reduce((s, i) => s + i.total, 0);

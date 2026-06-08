@@ -77,6 +77,7 @@ export interface JobDetails {
   gutterFeet2nd: number;
   downspouts2nd: number;
   customOtherCost: number;
+  customLaborCost: number;
 }
 
 export interface QuoteOptions {

@@ -119,8 +119,7 @@ export default function Step1Upload({ onComplete }: Props) {
           <li>• Customer name, address, phone, and email</li>
           <li>• Total roof area, pitched area, and square count</li>
           <li>• Linear feet of eaves, valleys, hips, ridges, rakes, and flashing</li>
-          <li>• Two-story and two-layer areas</li>
-          <li>• Predominant pitch</li>
+          <li>• Predominant pitch and per-pitch area breakdown</li>
         </ul>
       </div>
 

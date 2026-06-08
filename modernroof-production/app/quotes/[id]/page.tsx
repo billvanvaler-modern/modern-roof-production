@@ -28,6 +28,7 @@ const DEFAULT_JOB_DETAILS: JobDetails = {
   gutterFeet1st: 0, downspouts1st: 0,
   gutterFeet2nd: 0, downspouts2nd: 0,
   customOtherCost: 0,
+  customLaborCost: 0,
 };
 
 const DEFAULT_OPTIONS: QuoteOptions = {
@@ -47,6 +48,12 @@ const EMPTY_MEASUREMENTS: Measurements = {
   wastePct: 10, squaresWithWaste: 0, wasteTable: {},
 };
 
+// Extract the rise number from any pitch string: "4/12", "4:12", "4", "4.0"
+function pitchRise(pitchStr: string): number {
+  const m = pitchStr.match(/^(\d+(?:\.\d+)?)/);
+  return m ? parseFloat(m[1]) : 0;
+}
+
 function distributePitchAreas(m: Measurements): Partial<JobDetails> {
   const pt = m.pitchTable ?? {};
   const totalPitchedSqft =
@@ -54,21 +61,27 @@ function distributePitchAreas(m: Measurements): Partial<JobDetails> {
   let area4_12 = 0, area8_12 = 0, area10_12 = 0, area12_12 = 0;
 
   for (const [pitch, sqft] of Object.entries(pt)) {
-    const num = parseInt(pitch.split("/")[0], 10);
-    const proportion = sqft / totalPitchedSqft;
+    const num = pitchRise(pitch);
+    const proportion = totalPitchedSqft > 0 ? sqft / totalPitchedSqft : 0;
     const squares = Math.round(proportion * m.squaresWithWaste * 10) / 10;
     if (num <= 4) area4_12 += squares;
     else if (num >= 8 && num <= 9) area8_12 += squares;
     else if (num >= 10 && num <= 11) area10_12 += squares;
     else if (num >= 12) area12_12 += squares;
+    // 5/12–7/12: no surcharge, leave at 0
   }
 
-  if (Object.keys(pt).length === 0 && m.predominantPitch) {
-    const num = parseInt(m.predominantPitch.split("/")[0], 10);
-    if (num <= 4) area4_12 = m.squaresWithWaste;
-    else if (num >= 8 && num <= 9) area8_12 = m.squaresWithWaste;
-    else if (num >= 10 && num <= 11) area10_12 = m.squaresWithWaste;
-    else if (num >= 12) area12_12 = m.squaresWithWaste;
+  // Fallback: if pitchTable didn't produce any values AND we know the predominant pitch, use it
+  const distributed = area4_12 + area8_12 + area10_12 + area12_12;
+  if (distributed === 0 && m.squaresWithWaste > 0) {
+    const pitchSrc = m.predominantPitch || (Object.keys(pt)[0] ?? "");
+    if (pitchSrc) {
+      const num = pitchRise(pitchSrc);
+      if (num <= 4) area4_12 = m.squaresWithWaste;
+      else if (num >= 8 && num <= 9) area8_12 = m.squaresWithWaste;
+      else if (num >= 10 && num <= 11) area10_12 = m.squaresWithWaste;
+      else if (num >= 12) area12_12 = m.squaresWithWaste;
+    }
   }
 
   return {

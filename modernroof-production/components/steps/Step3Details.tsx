@@ -197,14 +197,23 @@ export default function Step3Details({ measurements, jobDetails: init, onBack, o
 
       {/* Other costs */}
       <section className="mb-8">
-        <h3 className="text-sm font-bold uppercase tracking-wide text-blue-600 mb-4">Other Costs</h3>
-        <NumField
-          label="Other / Misc Material Costs"
-          value={d.customOtherCost}
-          onChange={(v) => set("customOtherCost", v)}
-          suffix="$"
-          hint="Brick flashing, special materials, etc. (tax applied)"
-        />
+        <h3 className="text-sm font-bold uppercase tracking-wide text-blue-600 mb-4">Extra Costs</h3>
+        <div className="grid grid-cols-1 gap-4">
+          <NumField
+            label="Extra Material Costs"
+            value={d.customOtherCost}
+            onChange={(v) => set("customOtherCost", v)}
+            suffix="$"
+            hint="Brick flashing, special materials, etc. (7% tax applied)"
+          />
+          <NumField
+            label="Extra Labor Costs"
+            value={d.customLaborCost ?? 0}
+            onChange={(v) => set("customLaborCost", v)}
+            suffix="$"
+            hint="Sub quotes, specialized labor, anything not covered above (no tax)"
+          />
+        </div>
       </section>
 
       <div className="flex gap-3">
