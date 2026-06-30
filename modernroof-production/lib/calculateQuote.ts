@@ -98,7 +98,9 @@ export function calculateQuote(
     osbLabor10_12,
     osbLabor12_12,
     gutterFeet1st,
+    downspouts1st,
     gutterFeet2nd,
+    downspouts2nd,
     customOtherCost,
     customLaborCost,
   } = jobDetails;
@@ -299,7 +301,14 @@ export function calculateQuote(
 
   // ─── Upgrades ─────────────────────────────────────────────────────────────
 
-  const totalGutterFeet = gutterFeet1st + gutterFeet2nd;
+  // Effective gutter footage: linear gutter run + downspout equivalent footage.
+  // 1-story downspout counts as downspout1stFt lf; 2-story counts as downspout2ndFt lf.
+  const ds1Ft = UPGRADE_PRICE.downspout1stFt;  // e.g. 13
+  const ds2Ft = UPGRADE_PRICE.downspout2ndFt;  // e.g. 23
+  const downspout1stTotal = (downspouts1st ?? 0) * ds1Ft;
+  const downspout2ndTotal = (downspouts2nd ?? 0) * ds2Ft;
+  const totalGutterFeet =
+    gutterFeet1st + gutterFeet2nd + downspout1stTotal + downspout2ndTotal;
 
   const pipebootsPrice =
     !product.includesPipeboots && options.pipeboots
@@ -369,6 +378,18 @@ export function calculateQuote(
     inputRows.push(row("Chimneys", "job details", `${chimneySmall} small, ${chimneyMedium} medium, ${chimneyLarge} large`));
   if (skylightReplace + skylightReFlash > 0)
     inputRows.push(row("Skylights", "job details", `${skylightReplace} replace, ${skylightReFlash} re-flash`));
+  if (gutterFeet1st + gutterFeet2nd > 0 || (downspouts1st ?? 0) + (downspouts2nd ?? 0) > 0) {
+    inputRows.push(row(
+      "Gutter run",
+      "job details",
+      [
+        gutterFeet1st > 0 ? `${fmt(gutterFeet1st)} lf (1st fl)` : "",
+        gutterFeet2nd > 0 ? `${fmt(gutterFeet2nd)} lf (2nd fl)` : "",
+        (downspouts1st ?? 0) > 0 ? `${downspouts1st} 1-story downspout${downspouts1st! > 1 ? "s" : ""}` : "",
+        (downspouts2nd ?? 0) > 0 ? `${downspouts2nd} 2-story downspout${downspouts2nd! > 1 ? "s" : ""}` : "",
+      ].filter(Boolean).join(", ")
+    ));
+  }
   inputRows.push(row("Product", product.manufacturer, product.name));
   inputRows.push(row("Profit margin", "quote settings", `${(profitMargin * 100).toFixed(0)}%`));
 
@@ -497,10 +518,32 @@ export function calculateQuote(
       pricingRows.push(row("Upgrade: Pipeboots", `${pipeJacks} × ${fmtM(UPGRADE_PRICE.pipeboots)}`, fmtM(pipebootsPrice)));
     if (warrantyPrice > 0)
       pricingRows.push(row("Upgrade: Warranty", `${fmt(sq)} sq × ${fmtM(UPGRADE_PRICE.warrantyPerSq)}/sq`, fmtM(warrantyPrice)));
-    if (guttersPrice > 0)
-      pricingRows.push(row("Upgrade: Gutters", `${totalGutterFeet} lf × ${fmtM(UPGRADE_PRICE.guttersPerFt)}/lf`, fmtM(guttersPrice)));
-    if (gutterGuardsPrice > 0)
-      pricingRows.push(row("Upgrade: Gutter Guards", `${totalGutterFeet} lf × ${fmtM(UPGRADE_PRICE.gutterGuardsPerFt)}/lf`, fmtM(gutterGuardsPrice)));
+    if (guttersPrice > 0) {
+      const gutterFootageBreakdown = [
+        gutterFeet1st > 0 ? `${fmt(gutterFeet1st)} lf (1st fl)` : "",
+        gutterFeet2nd > 0 ? `${fmt(gutterFeet2nd)} lf (2nd fl)` : "",
+        downspout1stTotal > 0 ? `${downspouts1st} ds × ${ds1Ft} ft = ${downspout1stTotal} lf (1-story)` : "",
+        downspout2ndTotal > 0 ? `${downspouts2nd} ds × ${ds2Ft} ft = ${downspout2ndTotal} lf (2-story)` : "",
+      ].filter(Boolean).join(" + ");
+      pricingRows.push(row(
+        "Upgrade: Gutters",
+        `(${gutterFootageBreakdown}) = ${totalGutterFeet} lf × ${fmtM(UPGRADE_PRICE.guttersPerFt)}/lf`,
+        fmtM(guttersPrice)
+      ));
+    }
+    if (gutterGuardsPrice > 0) {
+      const gutterFootageBreakdown = [
+        gutterFeet1st > 0 ? `${fmt(gutterFeet1st)} lf (1st fl)` : "",
+        gutterFeet2nd > 0 ? `${fmt(gutterFeet2nd)} lf (2nd fl)` : "",
+        downspout1stTotal > 0 ? `${downspouts1st} ds × ${ds1Ft} ft = ${downspout1stTotal} lf (1-story)` : "",
+        downspout2ndTotal > 0 ? `${downspouts2nd} ds × ${ds2Ft} ft = ${downspout2ndTotal} lf (2-story)` : "",
+      ].filter(Boolean).join(" + ");
+      pricingRows.push(row(
+        "Upgrade: Gutter Guards",
+        `(${gutterFootageBreakdown}) = ${totalGutterFeet} lf × ${fmtM(UPGRADE_PRICE.gutterGuardsPerFt)}/lf`,
+        fmtM(gutterGuardsPrice)
+      ));
+    }
     if (boxToRidgePrice > 0)
       pricingRows.push(row(
         "Upgrade: Box-to-Ridge",

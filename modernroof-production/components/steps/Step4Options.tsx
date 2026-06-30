@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { QuoteOptions, ShingleProduct, JobDetails, Measurements } from "@/lib/types";
+import { UPGRADE_PRICE } from "@/lib/pricing";
 
 interface Props {
   catalog: ShingleProduct[];
@@ -35,7 +36,14 @@ export default function Step4Options({
     });
   }
 
-  const hasGutters = jobDetails.gutterFeet1st + jobDetails.gutterFeet2nd > 0;
+  // Effective gutter footage (matches calculateQuote.ts logic)
+  const ds1Total = (jobDetails.downspouts1st ?? 0) * UPGRADE_PRICE.downspout1stFt;
+  const ds2Total = (jobDetails.downspouts2nd ?? 0) * UPGRADE_PRICE.downspout2ndFt;
+  const effectiveGutterFeet =
+    jobDetails.gutterFeet1st + jobDetails.gutterFeet2nd + ds1Total + ds2Total;
+  const hasGutters =
+    jobDetails.gutterFeet1st + jobDetails.gutterFeet2nd > 0 ||
+    (jobDetails.downspouts1st ?? 0) + (jobDetails.downspouts2nd ?? 0) > 0;
   const hasBoxVents =
     jobDetails.ventilation !== "Ridge Vent" && jobDetails.boxVents > 0;
   const marginPct = Math.round(o.profitMargin * 100);
@@ -203,13 +211,15 @@ export default function Step4Options({
             label="Gutters"
             description={
               hasGutters
-                ? `$12/lf on ${
-                    jobDetails.gutterFeet1st + jobDetails.gutterFeet2nd
-                  } lf = $${(
-                    (jobDetails.gutterFeet1st + jobDetails.gutterFeet2nd) *
-                    12
-                  ).toLocaleString(undefined, { maximumFractionDigits: 0 })}`
-                : "Enter gutter footage in Job Details to enable"
+                ? `${UPGRADE_PRICE.guttersPerFt}/lf on ${effectiveGutterFeet} effective lf` +
+                  (ds1Total + ds2Total > 0
+                    ? ` (${jobDetails.gutterFeet1st + jobDetails.gutterFeet2nd} lf gutter` +
+                      (ds1Total > 0 ? ` + ${jobDetails.downspouts1st} × ${UPGRADE_PRICE.downspout1stFt} ft` : "") +
+                      (ds2Total > 0 ? ` + ${jobDetails.downspouts2nd} × ${UPGRADE_PRICE.downspout2ndFt} ft` : "") +
+                      " downspouts)"
+                    : "") +
+                  ` = $${(effectiveGutterFeet * UPGRADE_PRICE.guttersPerFt).toLocaleString(undefined, { maximumFractionDigits: 0 })}`
+                : "Enter gutter footage or downspout counts in Job Details to enable"
             }
             checked={o.gutters}
             disabled={!hasGutters}
@@ -219,13 +229,15 @@ export default function Step4Options({
             label="Gutter Guards (Screens)"
             description={
               hasGutters
-                ? `$12/lf on ${
-                    jobDetails.gutterFeet1st + jobDetails.gutterFeet2nd
-                  } lf = $${(
-                    (jobDetails.gutterFeet1st + jobDetails.gutterFeet2nd) *
-                    12
-                  ).toLocaleString(undefined, { maximumFractionDigits: 0 })}`
-                : "Enter gutter footage in Job Details to enable"
+                ? `${UPGRADE_PRICE.gutterGuardsPerFt}/lf on ${effectiveGutterFeet} effective lf` +
+                  (ds1Total + ds2Total > 0
+                    ? ` (${jobDetails.gutterFeet1st + jobDetails.gutterFeet2nd} lf gutter` +
+                      (ds1Total > 0 ? ` + ${jobDetails.downspouts1st} × ${UPGRADE_PRICE.downspout1stFt} ft` : "") +
+                      (ds2Total > 0 ? ` + ${jobDetails.downspouts2nd} × ${UPGRADE_PRICE.downspout2ndFt} ft` : "") +
+                      " downspouts)"
+                    : "") +
+                  ` = $${(effectiveGutterFeet * UPGRADE_PRICE.gutterGuardsPerFt).toLocaleString(undefined, { maximumFractionDigits: 0 })}`
+                : "Enter gutter footage or downspout counts in Job Details to enable"
             }
             checked={o.gutterGuards}
             disabled={!hasGutters}

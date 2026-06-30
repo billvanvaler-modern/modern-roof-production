@@ -52,12 +52,17 @@ export const LABOR = {
 
 // Upgrade pricing (what to charge the customer)
 export const UPGRADE_PRICE = {
-  pipeboots: 149.0, // per pipe jack (lifetime tool)
-  warrantyPerSq: 35.0, // Emerald Pro
-  guttersPerFt: 12.0, // per linear foot
-  gutterGuardsPerFt: 12.0, // per linear foot
-  newRidgePerFt: 13.5, // for box-to-ridge conversion
-  plugOldBox: 21.0, // per box vent plugged
+  pipeboots: 149.0,        // per pipe jack (lifetime tool)
+  warrantyPerSq: 35.0,     // Emerald Pro — per square
+  guttersPerFt: 12.0,      // per linear foot of gutter/guard
+  gutterGuardsPerFt: 12.0, // per linear foot of gutter guard
+  // Downspouts add equivalent gutter footage for pricing purposes.
+  // 1-story downspout ≈ 13 lf; 2-story downspout ≈ 23 lf.
+  // Adjust these values in this file whenever material/labor costs change.
+  downspout1stFt: 13,      // equivalent lf added per 1-story downspout
+  downspout2ndFt: 23,      // equivalent lf added per 2-story downspout
+  newRidgePerFt: 13.5,     // for box-to-ridge conversion
+  plugOldBox: 21.0,        // per box vent plugged
 };
 
 // Upgrade costs (what the contractor pays)
